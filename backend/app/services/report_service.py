@@ -1,0 +1,44 @@
+from app.database.repository import get_analysis_result
+
+
+def generate_report(result_id: int) -> dict | None:
+    """
+    Generate summarized risk report from saved analysis result.
+    """
+    result = get_analysis_result(result_id)
+
+    if result is None:
+        return None
+
+    risk_factors = result.get("risk_factors", [])
+
+    if risk_factors:
+        factors_text = ", ".join(
+            [
+                f"{factor['category']}({factor['keyword']})"
+                for factor in risk_factors
+            ]
+        )
+    else:
+        factors_text = "No major red flag factors detected"
+
+    summary = (
+        f"Risk Report\n\n"
+        f"Result ID: {result_id}\n"
+        f"Ticker or Company: {result.get('ticker')}\n"
+        f"Title: {result.get('title')}\n\n"
+        f"Sentiment Analysis:\n"
+        f"- Label: {result.get('sentiment_label')}\n"
+        f"- Confidence Score: {result.get('sentiment_score'):.2f}\n\n"
+        f"Risk Analysis:\n"
+        f"- Risk Score: {result.get('risk_score')}/100\n"
+        f"- Risk Level: {result.get('risk_level')}\n"
+        f"- Risk Factors: {factors_text}\n\n"
+        f"Explanation:\n"
+        f"{result.get('explanation')}\n"
+    )
+
+    return {
+        "result_id": result_id,
+        "summary": summary
+    }
