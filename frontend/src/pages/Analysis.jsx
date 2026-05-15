@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api, { useMock, mockReport } from '../services/api';
+import { fetchReport } from '../services/api';
 
-// 위험도 게이지 바
 const RiskGauge = ({ score }) => {
   const pct = Math.min(Math.max(score ?? 0, 0), 100);
   const color = pct >= 70 ? '#e74c3c' : pct >= 40 ? '#f39c12' : '#27ae60';
@@ -28,7 +27,6 @@ const RiskGauge = ({ score }) => {
   );
 };
 
-// 감성 분석 바
 const SentimentBar = ({ positive = 0, neutral = 0, negative = 0 }) => (
   <div className="space-y-3">
     {[
@@ -52,12 +50,17 @@ const SentimentBar = ({ positive = 0, neutral = 0, negative = 0 }) => (
   </div>
 );
 
-// 위험 요소 태그
 const RiskTag = ({ label }) => (
   <span className="inline-block bg-red-100 text-red-700 border border-red-200 text-xs font-semibold px-3 py-1 rounded-full mr-2 mb-2">
     ⚠ {label}
   </span>
 );
+
+const factorLabel = (f) => {
+  if (typeof f === 'string') return f;
+  if (f?.category && f?.keyword) return `${f.category} · ${f.keyword}`;
+  return f?.keyword || f?.category || '';
+};
 
 function Analysis() {
   const location = useLocation();
@@ -67,11 +70,12 @@ function Analysis() {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [report, setReport] = useState(null);
 
-  // 더미 데이터 (홈에서 결과 없이 직접 접근 시 폴백)
   const fallbackResult = {
     id: 0,
     news_title: '홈에서 뉴스를 클릭하여 분석을 시작하세요.',
+    title: '홈에서 뉴스를 클릭하여 분석을 시작하세요.',
     score: 0,
+    risk_score: 0,
     risk_level: 'Low',
     risk_factors: [],
     sentiment: { positive: 0, neutral: 1, negative: 0 },
@@ -79,6 +83,9 @@ function Analysis() {
   };
 
   const result = passedResult || fallbackResult;
+  const score = result.score ?? result.risk_score ?? 0;
+  const newsTitle = result.news_title ?? result.title;
+  const reasoning = result.reasoning ?? result.explanation;
 
   const getRiskStyle = (level) => {
     const l = (level || '').toLowerCase();
@@ -87,31 +94,16 @@ function Analysis() {
     return { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-600', badge: 'bg-green-600' };
   };
 
-  // 리포트 생성 (mock or real)
   const handleGenerateReport = async () => {
+    if (!result.id) return;
     setIsGeneratingReport(true);
     setReport(null);
     try {
-      let reportData;
-      if (useMock) {
-        // 🔧 Mock 모드
-        reportData = await mockReport(result);
-      } else {
-        // ✅ Real 모드: useMock = false 로 바꾸면 여기가 실행됨
-        const response = await api.post('/report', {
-          result_id: result.id,
-          news_title: result.news_title,
-          score: result.score,
-          risk_level: result.risk_level,
-          risk_factors: result.risk_factors,
-          reasoning: result.reasoning,
-        });
-        reportData = response.data;
-      }
-      setReport(reportData);
+      const data = await fetchReport(result.id);
+      setReport(data);
     } catch (error) {
       console.error('리포트 생성 실패:', error);
-      alert('리포트 생성에 실패했습니다.');
+      alert(error.response?.data?.detail || '리포트 생성에 실패했습니다.');
     } finally {
       setIsGeneratingReport(false);
     }
@@ -121,7 +113,6 @@ function Analysis() {
 
   return (
     <div className="max-w-3xl mx-auto py-12 px-4">
-      {/* 헤더 */}
       <div className="flex items-center gap-4 mb-10">
         <button
           onClick={() => navigate('/')}
@@ -137,14 +128,7 @@ function Analysis() {
         </div>
       </div>
 
-      {useMock && (
-        <span className="inline-block mb-6 text-xs bg-yellow-100 text-yellow-700 border border-yellow-200 px-3 py-1 rounded-full font-semibold">
-          ⚙ Mock 모드 — 백엔드 /report 연결 전
-        </span>
-      )}
-
       <div className="space-y-6">
-        {/* 위험 점수 카드 */}
         <div className={`p-6 rounded-2xl border-2 ${style.border} ${style.bg}`}>
           <div className="flex justify-between items-start mb-6">
             <div>
@@ -156,21 +140,18 @@ function Analysis() {
               </p>
             </div>
             <div className="text-right">
-              <span className={`text-6xl font-black ${style.text}`}>{result.score}</span>
+              <span className={`text-6xl font-black ${style.text}`}>{score}</span>
               <span className={`text-lg ${style.text}`}>점</span>
             </div>
           </div>
-          <RiskGauge score={result.score} />
+          <RiskGauge score={score} />
         </div>
 
-        {/* 원본 뉴스 */}
         <div className="p-6 rounded-2xl border border-slate-200 bg-white">
           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
             원본 뉴스
           </h4>
-          <p className="text-lg font-bold text-slate-800">
-            {result.news_title || '뉴스 제목 없음'}
-          </p>
+          <p className="text-lg font-bold text-slate-800">{newsTitle || '뉴스 제목 없음'}</p>
           {result.news_link && (
             <a
               href={result.news_link}
@@ -183,7 +164,6 @@ function Analysis() {
           )}
         </div>
 
-        {/* 감성 분석 */}
         {result.sentiment && (
           <div className="p-6 rounded-2xl border border-slate-200 bg-white">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
@@ -197,7 +177,6 @@ function Analysis() {
           </div>
         )}
 
-        {/* 위험 요소 */}
         {result.risk_factors?.length > 0 && (
           <div className="p-6 rounded-2xl border border-slate-200 bg-white">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
@@ -205,30 +184,27 @@ function Analysis() {
             </h4>
             <div>
               {result.risk_factors.map((f, i) => (
-                <RiskTag key={i} label={f} />
+                <RiskTag key={i} label={factorLabel(f)} />
               ))}
             </div>
           </div>
         )}
 
-        {/* LLM 추론 */}
         <div className="p-6 rounded-2xl border border-slate-200 bg-white">
           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
             🤖 LLM Reasoning (AI 판단 근거)
           </h4>
-          <p className="text-slate-700 leading-relaxed">{result.reasoning}</p>
+          <p className="text-slate-700 leading-relaxed whitespace-pre-line">{reasoning}</p>
         </div>
 
-        {/* 리포트 생성 버튼 */}
         <button
           onClick={handleGenerateReport}
-          disabled={isGeneratingReport || !passedResult}
+          disabled={isGeneratingReport || !passedResult || !result.id}
           className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-700 transition-all disabled:opacity-40"
         >
           {isGeneratingReport ? '리포트 생성 중...' : '📄 종합 리포트 생성'}
         </button>
 
-        {/* 생성된 리포트 */}
         {report && (
           <div className="p-6 rounded-2xl border-2 border-slate-900 bg-slate-50">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
@@ -237,7 +213,7 @@ function Analysis() {
             {report.summary && (
               <div className="mb-4">
                 <p className="text-sm font-semibold text-slate-600 mb-1">요약</p>
-                <p className="text-slate-800 leading-relaxed">{report.summary}</p>
+                <p className="text-slate-800 leading-relaxed whitespace-pre-line">{report.summary}</p>
               </div>
             )}
             {report.recommendation && (
