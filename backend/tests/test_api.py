@@ -4,6 +4,38 @@ def test_root(client):
     assert "message" in response.json()
 
 
+def test_signup_then_login(client):
+    signup = client.post(
+        "/auth/signup",
+        json={"email": "alice@test.com", "password": "secret123", "name": "Alice"},
+    )
+    assert signup.status_code == 200, signup.text
+    token = signup.json()["access_token"]
+    assert token
+
+    login = client.post(
+        "/auth/login",
+        json={"email": "alice@test.com", "password": "secret123"},
+    )
+    assert login.status_code == 200
+
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["email"] == "alice@test.com"
+
+
+def test_login_wrong_password_rejected(client):
+    client.post(
+        "/auth/signup",
+        json={"email": "bob@test.com", "password": "right-one", "name": "Bob"},
+    )
+    bad = client.post(
+        "/auth/login",
+        json={"email": "bob@test.com", "password": "wrong-one"},
+    )
+    assert bad.status_code == 401
+
+
 def test_analyze_news_with_text_blob(client):
     payload = {
         "text": "Company faces investigation after earnings decline and revenue decline.",

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useMockAuth, mockSignup, signupAPI, saveToken, saveUser } from '../services/auth';
+import { signupAPI, saveToken, saveUser } from '../services/auth';
 
 function Signup({ onLogin }) {
   const [name, setName] = useState('');
@@ -28,9 +28,7 @@ function Signup({ onLogin }) {
     setIsLoading(true);
     setError('');
     try {
-      const data = useMockAuth
-        ? await mockSignup({ email, password, name })
-        : await signupAPI({ email, password, name });
+      const data = await signupAPI({ email, password, name });
 
       saveToken(data.access_token);
       saveUser(data.user);
@@ -59,12 +57,6 @@ function Signup({ onLogin }) {
         {/* 카드 */}
         <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 border border-slate-100 dark:border-slate-700">
           <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">회원가입</h2>
-
-          {useMockAuth && (
-            <div className="mb-5 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-xl text-xs text-yellow-700 dark:text-yellow-400">
-              ⚙ Mock 모드 — 회원가입 후 바로 로그인됩니다.
-            </div>
-          )}
 
           <form onSubmit={handleSignup} className="space-y-4">
             <div>

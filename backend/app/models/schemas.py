@@ -1,11 +1,35 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
+# ── Auth ────────────────────────────────────────────────────────────────
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=4)
+    name: str
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserOut(BaseModel):
+    id: int
+    email: EmailStr
+    name: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
+
+
+# ── Analysis ────────────────────────────────────────────────────────────
 class AnalyzeRequest(BaseModel):
-    # Accept either {title, content} or a single {text} blob.
     title: Optional[str] = None
     content: Optional[str] = None
     text: Optional[str] = None
@@ -50,7 +74,6 @@ class AnalyzeResponse(BaseModel):
     news_link: Optional[str] = None
     created_at: Optional[datetime] = None
 
-    # Frontend-friendly aliases
     score: Optional[int] = None
     reasoning: Optional[str] = None
     news_title: Optional[str] = None

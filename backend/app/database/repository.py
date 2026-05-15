@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from app.database.models import AnalysisResult
 
 
-def save_analysis_result(db: Session, result: dict) -> AnalysisResult:
+def save_analysis_result(db: Session, result: dict, user_id: Optional[int] = None) -> AnalysisResult:
     record = AnalysisResult(
+        user_id=user_id,
         ticker=result.get("ticker"),
         title=result["title"],
         content=result["content"],
@@ -28,10 +29,8 @@ def get_analysis_result(db: Session, result_id: int) -> Optional[AnalysisResult]
     return db.query(AnalysisResult).filter(AnalysisResult.id == result_id).first()
 
 
-def list_analysis_results(db: Session, limit: int = 50) -> List[AnalysisResult]:
-    return (
-        db.query(AnalysisResult)
-        .order_by(AnalysisResult.created_at.desc())
-        .limit(limit)
-        .all()
-    )
+def list_analysis_results(db: Session, user_id: Optional[int] = None, limit: int = 50) -> List[AnalysisResult]:
+    query = db.query(AnalysisResult)
+    if user_id is not None:
+        query = query.filter(AnalysisResult.user_id == user_id)
+    return query.order_by(AnalysisResult.created_at.desc()).limit(limit).all()

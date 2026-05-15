@@ -48,6 +48,7 @@ def analyze_single_news(
     content: str,
     ticker: Optional[str] = None,
     news_link: Optional[str] = None,
+    user_id: Optional[int] = None,
 ) -> dict:
     full_text = (title or "") + " " + (content or "")
 
@@ -83,12 +84,18 @@ def analyze_single_news(
             "explanation": explanation,
             "news_link": news_link,
         },
+        user_id=user_id,
     )
 
     return _to_response_dict(record, _sentiment_breakdown(sentiment["label"], sentiment["score"]))
 
 
-def analyze_company_news(db: Session, company: str, display: int = 10) -> dict:
+def analyze_company_news(
+    db: Session,
+    company: str,
+    display: int = 10,
+    user_id: Optional[int] = None,
+) -> dict:
     news_list = fetch_news(company, display)
     results = []
     for news in news_list:
@@ -98,6 +105,7 @@ def analyze_company_news(db: Session, company: str, display: int = 10) -> dict:
             content=news["description"],
             ticker=company,
             news_link=news.get("link"),
+            user_id=user_id,
         )
         results.append(analyzed)
     return {"company": company, "news_count": len(results), "results": results}
