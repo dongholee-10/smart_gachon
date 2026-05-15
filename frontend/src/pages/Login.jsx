@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useMockAuth, mockLogin, loginAPI, saveToken, saveUser } from '../services/auth';
+import { loginAPI, saveToken, saveUser } from '../services/auth';
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -18,9 +18,7 @@ function Login({ onLogin }) {
     setIsLoading(true);
     setError('');
     try {
-      const data = useMockAuth
-        ? await mockLogin({ email, password })
-        : await loginAPI({ email, password });
+      const data = await loginAPI({ email, password });
 
       saveToken(data.access_token);
       saveUser(data.user);
@@ -49,12 +47,6 @@ function Login({ onLogin }) {
         {/* 카드 */}
         <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 border border-slate-100 dark:border-slate-700">
           <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">로그인</h2>
-
-          {useMockAuth && (
-            <div className="mb-5 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-xl text-xs text-yellow-700 dark:text-yellow-400">
-              ⚙ Mock 모드 — 테스트 계정: <strong>test@test.com</strong> / <strong>1234</strong>
-            </div>
-          )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
