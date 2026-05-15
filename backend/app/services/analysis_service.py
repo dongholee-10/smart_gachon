@@ -52,6 +52,8 @@ def analyze_single_news(
         risk_level=risk_level,
         risk_score=risk_score,
         risk_factors=risk_factors,
+        title=title,
+        content=content,
     )
 
     result = {
