@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api, { useMock, mockAnalyze } from '../services/api';
+import { analyzeNews, searchNews } from '../services/api';
 import RiskCard from '../components/RiskCard';
 
-// pubDate 파싱 → 한국어 날짜 포맷
 const formatDate = (pubDate) => {
   if (!pubDate) return '';
   try {
-    const date = new Date(pubDate);
-    return date.toLocaleString('ko-KR', {
+    return new Date(pubDate).toLocaleString('ko-KR', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -20,7 +18,6 @@ const formatDate = (pubDate) => {
   }
 };
 
-// pubDate → 정렬용 timestamp
 const toTimestamp = (pubDate) => {
   try {
     return new Date(pubDate).getTime();
@@ -29,34 +26,34 @@ const toTimestamp = (pubDate) => {
   }
 };
 
+const stripTags = (html) => (html || '').replace(/<[^>]+>/g, '');
+
 function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(null);
   const [newsList, setNewsList] = useState([]);
   const [analysisResults, setAnalysisResults] = useState({});
-  const [sortOrder, setSortOrder] = useState('latest'); // 'latest' | 'oldest'
+  const [sortOrder, setSortOrder] = useState('latest');
   const navigate = useNavigate();
 
-  // 뉴스 검색
   const handleSearch = async () => {
     if (!searchTerm.trim()) return alert('검색어를 입력해주세요!');
     setIsLoading(true);
     setNewsList([]);
     setAnalysisResults({});
     try {
-      const response = await api.get(`/news?query=${searchTerm}`);
-      setNewsList(response.data.news || []);
-      if ((response.data.news || []).length === 0) alert('검색 결과가 없습니다.');
+      const news = await searchNews(searchTerm);
+      setNewsList(news);
+      if (news.length === 0) alert('검색 결과가 없습니다.');
     } catch (error) {
       console.error('뉴스 로드 실패:', error);
-      alert('백엔드 서버와 통신할 수 없습니다.');
+      alert(error.response?.data?.detail || '백엔드 서버와 통신할 수 없습니다.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 정렬된 뉴스 리스트 (원본 index 보존)
   const sortedNewsWithIndex = [...newsList]
     .map((item, originalIndex) => ({ item, originalIndex }))
     .sort((a, b) => {
@@ -64,7 +61,6 @@ function Home() {
       return sortOrder === 'latest' ? diff : -diff;
     });
 
-  // 뉴스 클릭 → 분석
   const handleAnalyze = async (item, index) => {
     if (analysisResults[index]) {
       navigate('/analysis', { state: { result: analysisResults[index] } });
@@ -72,23 +68,18 @@ function Home() {
     }
     setIsAnalyzing(index);
     try {
-      const text =
-        item.title.replace(/<[^>]+>/g, '') +
-        ' ' +
-        (item.description || '').replace(/<[^>]+>/g, '');
-      let result;
-      if (useMock) {
-        result = await mockAnalyze(text);
-        result.news_title = item.title.replace(/<[^>]+>/g, '');
-        result.news_link = item.link;
-      } else {
-        const response = await api.post('/analyze', { text, source: item.link });
-        result = response.data;
-      }
+      const title = stripTags(item.title);
+      const content = stripTags(item.description);
+      const result = await analyzeNews({
+        title,
+        content,
+        ticker: searchTerm,
+        news_link: item.link,
+      });
       setAnalysisResults((prev) => ({ ...prev, [index]: result }));
     } catch (error) {
       console.error('분석 실패:', error);
-      alert('분석 요청에 실패했습니다.');
+      alert(error.response?.data?.detail || '분석 요청에 실패했습니다.');
     } finally {
       setIsAnalyzing(null);
     }
@@ -124,12 +115,11 @@ function Home() {
 
   const analyzedValues = Object.values(analysisResults);
   const analyzedCount = analyzedValues.length;
-  const maxScore = analyzedCount > 0 ? Math.max(...analyzedValues.map((r) => r.score ?? 0)) : 0;
+  const maxScore = analyzedCount > 0 ? Math.max(...analyzedValues.map((r) => r.score ?? r.risk_score ?? 0)) : 0;
   const highRiskCount = analyzedValues.filter((r) => r.risk_level?.toLowerCase() === 'high').length;
 
   return (
     <div className="max-w-5xl mx-auto py-16 px-4">
-      {/* 헤더 */}
       <div className="text-center mb-12">
         <h2 className="text-5xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter italic">
           RED FLAG NEWS
@@ -137,14 +127,8 @@ function Home() {
         <p className="text-lg text-slate-500 dark:text-slate-400">
           실시간 뉴스 데이터를 기반으로 시장의 흐름을 분석합니다.
         </p>
-        {useMock && (
-          <span className="inline-block mt-3 text-xs bg-yellow-100 text-yellow-700 border border-yellow-200 px-3 py-1 rounded-full font-semibold dark:bg-yellow-900 dark:text-yellow-300">
-            ⚙ 분석 기능 Mock 모드 — 백엔드 /analyze 연결 전
-          </span>
-        )}
       </div>
 
-      {/* 검색 바 */}
       <div className="flex gap-3 mb-10 shadow-2xl rounded-2xl p-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
         <input
           type="text"
@@ -163,7 +147,6 @@ function Home() {
         </button>
       </div>
 
-      {/* RiskCard 요약 */}
       {analyzedCount > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
           <RiskCard title="분석된 뉴스" value={`${analyzedCount}건`} description="클릭하여 분석 완료된 뉴스 수" isHighRisk={false} />
@@ -172,7 +155,6 @@ function Home() {
         </div>
       )}
 
-      {/* 정렬 버튼 */}
       {newsList.length > 0 && (
         <div className="flex items-center gap-2 mb-4">
           <span className="text-sm text-slate-400 dark:text-slate-500">정렬:</span>
@@ -202,11 +184,11 @@ function Home() {
         </div>
       )}
 
-      {/* 뉴스 리스트 */}
       <div className="space-y-4">
         {sortedNewsWithIndex.map(({ item, originalIndex }) => {
           const result = analysisResults[originalIndex];
           const analyzing = isAnalyzing === originalIndex;
+          const displayScore = result?.score ?? result?.risk_score;
 
           return (
             <div
@@ -218,13 +200,11 @@ function Home() {
                   : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
               }`}
             >
-              {/* 상단 */}
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">
                     News {originalIndex + 1}
                   </span>
-                  {/* 날짜 표시 */}
                   {item.pubDate && (
                     <span className="text-xs text-slate-400 dark:text-slate-500">
                       🕐 {formatDate(item.pubDate)}
@@ -242,29 +222,25 @@ function Home() {
                 </div>
               </div>
 
-              {/* 뉴스 제목 */}
               <h3
                 className="text-xl font-bold text-slate-800 dark:text-white mb-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 dangerouslySetInnerHTML={{ __html: item.title }}
               />
-
-              {/* 뉴스 설명 */}
               <p
                 className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-3"
                 dangerouslySetInnerHTML={{ __html: item.description }}
               />
 
-              {/* 분석 결과 인라인 */}
               {result && (
                 <div className="mt-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">AI 분석 결과</span>
                     <span className={`text-xl font-black ${getRiskTextColor(result.risk_level)}`}>
-                      {result.score}점
+                      {displayScore}점
                     </span>
                   </div>
                   <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 mb-3">
-                    {result.reasoning}
+                    {result.reasoning ?? result.explanation}
                   </p>
                   <button
                     onClick={(e) => {
@@ -278,7 +254,6 @@ function Home() {
                 </div>
               )}
 
-              {/* 원문 링크 */}
               {!result && !analyzing && (
                 <a
                   href={item.link}
@@ -295,7 +270,6 @@ function Home() {
         })}
       </div>
 
-      {/* 빈 상태 */}
       {!isLoading && newsList.length === 0 && (
         <div className="text-center py-20 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl">
           <p className="text-2xl mb-3">🔍</p>
