@@ -5,3 +5,5 @@ __pycache__/
 venv/
 .env.local
 .pytest_cache/
+*.db
+*.sqlite3

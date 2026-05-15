@@ -1,31 +1,37 @@
-from typing import Any, Dict, List, Optional
-from datetime import datetime
+from typing import List, Optional
 
-fake_db: Dict[int, Dict[str, Any]] = {}
-current_id = 1
+from sqlalchemy.orm import Session
 
-
-def save_analysis_result(result: dict) -> dict:
-    """
-    Save analysis result into in-memory repository.
-    This can be replaced with PostgreSQL or MongoDB later.
-    """
-    global current_id
-
-    result["id"] = current_id
-    result["created_at"] = datetime.now().isoformat()
-
-    fake_db[current_id] = result
-    current_id += 1
-
-    return result
+from app.database.models import AnalysisResult
 
 
-def get_analysis_result(result_id: int) -> Optional[dict]:
-    """Retrieve analysis result by ID."""
-    return fake_db.get(result_id)
+def save_analysis_result(db: Session, result: dict) -> AnalysisResult:
+    record = AnalysisResult(
+        ticker=result.get("ticker"),
+        title=result["title"],
+        content=result["content"],
+        sentiment_label=result["sentiment_label"],
+        sentiment_score=result["sentiment_score"],
+        risk_score=result["risk_score"],
+        risk_level=result["risk_level"],
+        risk_factors=result.get("risk_factors", []),
+        explanation=result["explanation"],
+        news_link=result.get("news_link"),
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
 
 
-def get_all_analysis_results() -> List[dict]:
-    """Retrieve all stored analysis results."""
-    return list(fake_db.values())
+def get_analysis_result(db: Session, result_id: int) -> Optional[AnalysisResult]:
+    return db.query(AnalysisResult).filter(AnalysisResult.id == result_id).first()
+
+
+def list_analysis_results(db: Session, limit: int = 50) -> List[AnalysisResult]:
+    return (
+        db.query(AnalysisResult)
+        .order_by(AnalysisResult.created_at.desc())
+        .limit(limit)
+        .all()
+    )

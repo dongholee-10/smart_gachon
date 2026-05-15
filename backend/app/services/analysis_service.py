@@ -1,5 +1,7 @@
 from typing import Optional
 
+from sqlalchemy.orm import Session
+
 from app.ai.explanation_generator import generate_explanation
 from app.ai.finbert_analyzer import finbert_analyzer
 from app.ai.risk_engine import (
@@ -7,12 +9,12 @@ from app.ai.risk_engine import (
     classify_risk_level,
     detect_risk_factors,
 )
+from app.database.models import AnalysisResult
 from app.database.repository import save_analysis_result
 from app.services.news_service import fetch_news
 
 
 def _sentiment_breakdown(label: str, score: float) -> dict:
-    """Approximate 3-way probability dict for the UI's sentiment bar."""
     remainder = max(0.0, 1.0 - score) / 2
     breakdown = {"positive": remainder, "neutral": remainder, "negative": remainder}
     if label in breakdown:
@@ -20,22 +22,33 @@ def _sentiment_breakdown(label: str, score: float) -> dict:
     return breakdown
 
 
-def _decorate(result: dict, sentiment_label: str, sentiment_score: float) -> dict:
-    """Add frontend-friendly aliases (score / reasoning / news_title / sentiment)."""
-    result["score"] = result["risk_score"]
-    result["reasoning"] = result["explanation"]
-    result["news_title"] = result["title"]
-    result["sentiment"] = _sentiment_breakdown(sentiment_label, sentiment_score)
-    return result
+def _to_response_dict(record: AnalysisResult, sentiment_scores: dict) -> dict:
+    return {
+        "id": record.id,
+        "ticker": record.ticker,
+        "title": record.title,
+        "content": record.content,
+        "sentiment_label": record.sentiment_label,
+        "sentiment_score": record.sentiment_score,
+        "risk_score": record.risk_score,
+        "risk_level": record.risk_level,
+        "risk_factors": record.risk_factors,
+        "explanation": record.explanation,
+        "news_link": record.news_link,
+        "score": record.risk_score,
+        "reasoning": record.explanation,
+        "news_title": record.title,
+        "sentiment": sentiment_scores,
+    }
 
 
 def analyze_single_news(
+    db: Session,
     title: str,
     content: str,
     ticker: Optional[str] = None,
     news_link: Optional[str] = None,
 ) -> dict:
-    """Full AI pipeline for one news article."""
     full_text = (title or "") + " " + (content or "")
 
     sentiment = finbert_analyzer.analyze(full_text)
@@ -56,29 +69,31 @@ def analyze_single_news(
         content=content,
     )
 
-    result = {
-        "ticker": ticker,
-        "title": title,
-        "content": content,
-        "sentiment_label": sentiment["label"],
-        "sentiment_score": sentiment["score"],
-        "risk_score": risk_score,
-        "risk_level": risk_level,
-        "risk_factors": risk_factors,
-        "explanation": explanation,
-        "news_link": news_link,
-    }
+    record = save_analysis_result(
+        db,
+        result={
+            "ticker": ticker,
+            "title": title,
+            "content": content,
+            "sentiment_label": sentiment["label"],
+            "sentiment_score": sentiment["score"],
+            "risk_score": risk_score,
+            "risk_level": risk_level,
+            "risk_factors": risk_factors,
+            "explanation": explanation,
+            "news_link": news_link,
+        },
+    )
 
-    saved_result = save_analysis_result(result)
-    return _decorate(saved_result, sentiment["label"], sentiment["score"])
+    return _to_response_dict(record, _sentiment_breakdown(sentiment["label"], sentiment["score"]))
 
 
-def analyze_company_news(company: str, display: int = 10) -> dict:
-    """Search news by company name and analyze each article."""
+def analyze_company_news(db: Session, company: str, display: int = 10) -> dict:
     news_list = fetch_news(company, display)
     results = []
     for news in news_list:
         analyzed = analyze_single_news(
+            db=db,
             title=news["title"],
             content=news["description"],
             ticker=company,

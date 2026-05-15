@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AnalyzeRequest(BaseModel):
@@ -34,6 +35,8 @@ class SentimentBreakdown(BaseModel):
 
 
 class AnalyzeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     ticker: Optional[str] = None
     title: str
@@ -45,6 +48,7 @@ class AnalyzeResponse(BaseModel):
     risk_factors: List[RiskFactor]
     explanation: str
     news_link: Optional[str] = None
+    created_at: Optional[datetime] = None
 
     # Frontend-friendly aliases
     score: Optional[int] = None
