@@ -92,42 +92,54 @@ def _try_anthropic(sentiment_label, sentiment_score, risk_level, risk_score, ris
         return None
 
 
+_SENTIMENT_KO = {"positive": "긍정", "neutral": "중립", "negative": "부정"}
+_CATEGORY_KO = {
+    "legal": "법적",
+    "regulatory": "규제",
+    "financial": "재무",
+    "management": "경영",
+    "market": "시장",
+}
+
+
 def _template_explanation(sentiment_label, sentiment_score, risk_level, risk_score, risk_factors) -> str:
+    sentiment_ko = _SENTIMENT_KO.get(sentiment_label, sentiment_label)
     base = (
-        f"The news sentiment is classified as {sentiment_label} "
-        f"with a confidence score of {sentiment_score:.2f}. "
-        f"The calculated risk score is {risk_score}/100, "
-        f"which corresponds to a {risk_level} risk level. "
+        f"이 뉴스의 감성은 '{sentiment_ko}'으로 분류되었으며 "
+        f"신뢰도는 {sentiment_score:.2f}입니다. "
+        f"산출된 위험 점수는 {risk_score}/100으로 "
+        f"'{risk_level}' 수준에 해당합니다. "
     )
 
     if not risk_factors:
         return (
             base
-            + "No explicit red flag keywords were detected. "
-            + "Therefore, the overall risk appears limited based on the current news text."
+            + "명시적인 위험 키워드는 탐지되지 않았습니다. "
+            + "따라서 현재 뉴스 텍스트만 보았을 때 전반적인 위험은 제한적인 것으로 판단됩니다."
         )
 
     factor_descriptions = [
-        f"{f['category']} risk was detected from the keyword '{f['keyword']}'" for f in risk_factors
+        f"{_CATEGORY_KO.get(f['category'], f['category'])} 리스크('{f['keyword']}')"
+        for f in risk_factors
     ]
-    factor_text = "; ".join(factor_descriptions)
-    explanation = base + f"The system detected the following red flag signals: {factor_text}. "
+    factor_text = ", ".join(factor_descriptions)
+    explanation = base + f"다음과 같은 위험 신호가 탐지되었습니다: {factor_text}. "
 
     if risk_level == "High":
         explanation += (
-            "This suggests that the company may be facing serious potential risks. "
-            "Investors should carefully monitor whether these issues affect legal stability, "
-            "regulatory compliance, financial performance, or market confidence."
+            "이는 해당 기업이 상당한 잠재 리스크에 직면해 있을 가능성을 시사합니다. "
+            "투자자는 법적 안정성, 규제 준수, 재무 성과, 시장 신뢰도에 미치는 영향을 "
+            "면밀히 모니터링할 필요가 있습니다."
         )
     elif risk_level == "Medium":
         explanation += (
-            "This indicates a moderate level of uncertainty. The issue may not immediately imply "
-            "severe damage, but it should be monitored because it could affect investor sentiment."
+            "중간 수준의 불확실성이 감지되었습니다. 당장 심각한 피해로 이어진다고 단정하기는 "
+            "어렵지만, 투자 심리와 향후 실적에 영향을 줄 수 있으므로 지속적인 관찰이 필요합니다."
         )
     else:
         explanation += (
-            "The detected risk appears relatively limited. However, the news should still be "
-            "interpreted together with additional financial data."
+            "탐지된 위험은 상대적으로 제한적인 수준입니다. "
+            "다만 이 뉴스는 다른 재무 데이터와 함께 종합적으로 해석되어야 합니다."
         )
 
     return explanation

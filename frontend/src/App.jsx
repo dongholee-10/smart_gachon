@@ -12,8 +12,26 @@ function PrivateRoute({ user, children }) {
   return children;
 }
 
+// 한국 표준시(KST) 기준 현재 시각이 밤(18~05시)인지 여부.
+// 시스템 타임존과 무관하게 항상 Asia/Seoul 로 평가한다.
+const isNightInKorea = () => {
+  const hourString = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul',
+    hour: 'numeric',
+    hour12: false,
+  }).format(new Date());
+  const hour = parseInt(hourString, 10);
+  return Number.isNaN(hour) ? false : hour < 6 || hour >= 18;
+};
+
 function App() {
-  const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
+  // 사용자가 토글한 적이 있으면 그 값을 따르고, 아니면 KST 시간대로 자동 결정.
+  const [dark, setDark] = useState(() => {
+    const stored = localStorage.getItem('theme');
+    if (stored === 'dark') return true;
+    if (stored === 'light') return false;
+    return isNightInKorea();
+  });
   const [user, setUser] = useState(() => getUser());
 
   useEffect(() => {
@@ -25,6 +43,16 @@ function App() {
       localStorage.setItem('theme', 'light');
     }
   }, [dark]);
+
+  // 매 분 KST 시간대 점검 — 사용자가 수동 토글한 적이 없을 때만 자동 갱신한다.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (localStorage.getItem('theme-manual') === '1') return;
+      const next = isNightInKorea();
+      setDark((curr) => (curr === next ? curr : next));
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogin = (userData) => {
     setUser(userData);
@@ -61,9 +89,12 @@ function App() {
                   로그아웃
                 </button>
 
-                {/* 다크모드 토글 */}
+                {/* 다크모드 토글 — 수동 변경 시 KST 자동 모드를 비활성화 */}
                 <button
-                  onClick={() => setDark(!dark)}
+                  onClick={() => {
+                    localStorage.setItem('theme-manual', '1');
+                    setDark(!dark);
+                  }}
                   className="w-10 h-10 rounded-full bg-slate-700 hover:bg-slate-600 transition flex items-center justify-center text-lg"
                   title={dark ? '라이트 모드' : '다크 모드'}
                 >

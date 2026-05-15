@@ -18,12 +18,12 @@ const formatDate = (pubDate) => {
   }
 };
 
+// pubDate 파싱이 실패하면 NaN이 나오는데, NaN 끼리 비교하면 sort가 무작위로 보일 수 있다.
+// 실패 시 가장 오래된 것(0)으로 처리해 항상 결정적 순서가 나오게 한다.
 const toTimestamp = (pubDate) => {
-  try {
-    return new Date(pubDate).getTime();
-  } catch {
-    return 0;
-  }
+  if (!pubDate) return 0;
+  const t = new Date(pubDate).getTime();
+  return Number.isNaN(t) ? 0 : t;
 };
 
 const stripTags = (html) => (html || '').replace(/<[^>]+>/g, '');
@@ -192,7 +192,7 @@ function Home() {
 
           return (
             <div
-              key={originalIndex}
+              key={item.link || `news-${originalIndex}`}
               onClick={() => handleAnalyze(item, originalIndex)}
               className={`p-6 bg-white dark:bg-slate-800 rounded-2xl border-2 shadow-sm hover:shadow-md transition-all cursor-pointer ${
                 result
