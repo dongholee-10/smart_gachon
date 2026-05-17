@@ -4,10 +4,13 @@ def test_root(client):
     assert "message" in response.json()
 
 
+VALID_PASSWORD = "Hunter2!ab"
+
+
 def test_signup_then_login(client):
     signup = client.post(
         "/auth/signup",
-        json={"email": "alice@test.com", "password": "secret123", "name": "Alice"},
+        json={"email": "alice@test.com", "password": VALID_PASSWORD, "name": "Alice"},
     )
     assert signup.status_code == 200, signup.text
     token = signup.json()["access_token"]
@@ -15,7 +18,7 @@ def test_signup_then_login(client):
 
     login = client.post(
         "/auth/login",
-        json={"email": "alice@test.com", "password": "secret123"},
+        json={"email": "alice@test.com", "password": VALID_PASSWORD},
     )
     assert login.status_code == 200
 
@@ -27,13 +30,38 @@ def test_signup_then_login(client):
 def test_login_wrong_password_rejected(client):
     client.post(
         "/auth/signup",
-        json={"email": "bob@test.com", "password": "right-one", "name": "Bob"},
+        json={"email": "bob@test.com", "password": VALID_PASSWORD, "name": "Bob"},
     )
     bad = client.post(
         "/auth/login",
-        json={"email": "bob@test.com", "password": "wrong-one"},
+        json={"email": "bob@test.com", "password": "Wrong-One!9"},
     )
     assert bad.status_code == 401
+
+
+import pytest
+
+
+@pytest.mark.parametrize(
+    "weak_password,reason",
+    [
+        ("Short1!", "7글자 — 길이 부족"),
+        ("alllower1!a", "대문자 없음"),
+        ("ALLUPPER1!A", "소문자 없음"),
+        ("NoDigitsHere!", "숫자 없음"),
+        ("NoSpecial123A", "특수문자 없음"),
+    ],
+)
+def test_signup_rejects_weak_password(client, weak_password, reason):
+    res = client.post(
+        "/auth/signup",
+        json={
+            "email": f"weak-{abs(hash(weak_password))}@test.com",
+            "password": weak_password,
+            "name": "X",
+        },
+    )
+    assert res.status_code == 422, f"{reason}: {res.text}"
 
 
 def test_analyze_news_with_text_blob(client):
