@@ -1,14 +1,44 @@
+import re
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 # ── Auth ────────────────────────────────────────────────────────────────
+# 비밀번호 정책: 8자 이상 + 대문자 + 소문자 + 숫자 + 특수문자 각 1개 이상.
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_SPECIAL_CHARS = r"!@#$%^&*()\-_=+[\]{};:'\",.<>/?\\|`~"
+_PASSWORD_SPECIAL_RE = re.compile(f"[{re.escape(PASSWORD_SPECIAL_CHARS)}]")
+PASSWORD_POLICY_MESSAGE = (
+    f"비밀번호는 {PASSWORD_MIN_LENGTH}자 이상이며 "
+    "대문자·소문자·숫자·특수문자를 각각 1개 이상 포함해야 합니다."
+)
+
+
+def _validate_password(value: str) -> str:
+    if len(value) < PASSWORD_MIN_LENGTH:
+        raise ValueError(PASSWORD_POLICY_MESSAGE)
+    if not re.search(r"[A-Z]", value):
+        raise ValueError(PASSWORD_POLICY_MESSAGE)
+    if not re.search(r"[a-z]", value):
+        raise ValueError(PASSWORD_POLICY_MESSAGE)
+    if not re.search(r"\d", value):
+        raise ValueError(PASSWORD_POLICY_MESSAGE)
+    if not _PASSWORD_SPECIAL_RE.search(value):
+        raise ValueError(PASSWORD_POLICY_MESSAGE)
+    return value
+
+
 class SignupRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=4)
+    password: str
     name: str
+
+    @field_validator("password")
+    @classmethod
+    def password_must_meet_policy(cls, v: str) -> str:
+        return _validate_password(v)
 
 
 class LoginRequest(BaseModel):

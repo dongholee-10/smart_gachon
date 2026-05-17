@@ -2,6 +2,25 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signupAPI, saveToken, saveUser } from '../services/auth';
 
+// 백엔드 정책과 동일: 8자+ / 대문자 / 소문자 / 숫자 / 특수문자.
+const PASSWORD_RULES = [
+  { key: 'length', label: '8자 이상', test: (v) => v.length >= 8 },
+  { key: 'upper', label: '대문자 포함 (A-Z)', test: (v) => /[A-Z]/.test(v) },
+  { key: 'lower', label: '소문자 포함 (a-z)', test: (v) => /[a-z]/.test(v) },
+  { key: 'digit', label: '숫자 포함 (0-9)', test: (v) => /\d/.test(v) },
+  {
+    key: 'special',
+    label: '특수문자 포함 (!@#$ 등)',
+    test: (v) => /[!@#$%^&*()\-_=+[\]{};:'",.<>/?\\|`~]/.test(v),
+  },
+];
+
+const passwordPolicyError = (pw) => {
+  const failing = PASSWORD_RULES.filter((r) => !r.test(pw));
+  if (failing.length === 0) return null;
+  return '비밀번호는 8자 이상이며 대문자·소문자·숫자·특수문자를 각각 1개 이상 포함해야 합니다.';
+};
+
 function Signup({ onLogin }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -21,8 +40,9 @@ function Signup({ onLogin }) {
       setError('비밀번호가 일치하지 않습니다.');
       return;
     }
-    if (password.length < 4) {
-      setError('비밀번호는 4자 이상이어야 합니다.');
+    const policyError = passwordPolicyError(password);
+    if (policyError) {
+      setError(policyError);
       return;
     }
     setIsLoading(true);
@@ -91,9 +111,30 @@ function Signup({ onLogin }) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="4자 이상"
+                placeholder="대/소문자·숫자·특수문자 포함 8자 이상"
                 className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
               />
+              {/* 정책 체크리스트 — 입력하기 시작하면 표시 */}
+              {password.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {PASSWORD_RULES.map((rule) => {
+                    const ok = rule.test(password);
+                    return (
+                      <li
+                        key={rule.key}
+                        className={`text-xs flex items-center gap-1.5 ${
+                          ok
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        <span>{ok ? '✓' : '·'}</span>
+                        {rule.label}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
