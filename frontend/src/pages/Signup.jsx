@@ -30,9 +30,12 @@ function Signup({ onLogin }) {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  const passwordsMatch = passwordConfirm.length > 0 && password === passwordConfirm;
+  const passwordsMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
+
   const handleSignup = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || !password.trim()) {
+    if (!name.trim() || !email.trim() || !password.trim() || !passwordConfirm.trim()) {
       setError('모든 항목을 입력해주세요.');
       return;
     }
@@ -145,8 +148,25 @@ function Signup({ onLogin }) {
                 value={passwordConfirm}
                 onChange={(e) => setPasswordConfirm(e.target.value)}
                 placeholder="비밀번호 재입력"
-                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                className={`w-full p-4 rounded-xl border bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none transition ${
+                  passwordsMatch
+                    ? 'border-green-500 focus:border-green-500'
+                    : passwordsMismatch
+                    ? 'border-red-400 focus:border-red-500'
+                    : 'border-slate-200 dark:border-slate-600 focus:border-blue-500'
+                }`}
               />
+              {/* 실시간 일치 여부 — 확인란을 비우면 숨김 */}
+              {passwordsMatch && (
+                <p className="mt-2 text-xs flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                  <span>✓</span> 비밀번호가 일치합니다
+                </p>
+              )}
+              {passwordsMismatch && (
+                <p className="mt-2 text-xs flex items-center gap-1.5 text-red-500 dark:text-red-400">
+                  <span>✗</span> 비밀번호가 일치하지 않습니다
+                </p>
+              )}
             </div>
 
             {error && (
