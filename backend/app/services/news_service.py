@@ -31,6 +31,81 @@ def remove_duplicates(news_list: list) -> list:
     return unique_news
 
 
+LATEST_NEWS_KEYWORDS = ["주가", "증시", "코스피", "코스닥", "반도체", "AI 주식", "실적"]
+
+
+def fetch_latest_news(display: int = 5) -> list:
+    """
+    Fetch latest general stock market news for the home screen.
+    Cycles through general keywords and returns the top N most recent items.
+    """
+    if not settings.NAVER_CLIENT_ID or not settings.NAVER_CLIENT_SECRET:
+        raise Exception("Naver API keys are missing. Please check your .env file.")
+
+    headers = {
+        "X-Naver-Client-Id": settings.NAVER_CLIENT_ID,
+        "X-Naver-Client-Secret": settings.NAVER_CLIENT_SECRET
+    }
+
+    all_items = []
+
+    for keyword in LATEST_NEWS_KEYWORDS[:3]:
+        params = {
+            "query": keyword,
+            "display": 10,
+            "sort": "date"
+        }
+        try:
+            response = requests.get(
+                NAVER_NEWS_URL,
+                headers=headers,
+                params=params,
+                timeout=10
+            )
+            response.encoding = "utf-8"
+            if response.status_code == 200:
+                data = response.json()
+                all_items.extend(data.get("items", []))
+        except Exception:
+            continue
+
+    now = datetime.now(timezone.utc)
+    three_days_ago = now - timedelta(days=3)
+
+    scored_news = []
+    for item in all_items:
+        title = clean_html(item.get("title", ""))
+        description = clean_html(item.get("description", ""))
+        link = item.get("link", "")
+        pub_date_text = item.get("pubDate", "")
+
+        try:
+            pub_date = datetime.strptime(pub_date_text, "%a, %d %b %Y %H:%M:%S %z")
+        except Exception:
+            continue
+
+        if pub_date < three_days_ago:
+            continue
+
+        full_text = title + " " + description
+        score = sum(1 for keyword in STOCK_KEYWORDS if keyword.lower() in full_text.lower())
+
+        if score >= 1:
+            scored_news.append({
+                "score": score,
+                "title": title,
+                "description": description,
+                "link": link,
+                "pubDate": pub_date_text
+            })
+
+    # 최신순으로 정렬 후 중복 제거
+    scored_news.sort(key=lambda x: x["pubDate"], reverse=True)
+    unique_news = remove_duplicates(scored_news)
+
+    return unique_news[:display]
+
+
 def fetch_news(query: str, display: int = 10) -> list:
     """
     Fetch recent stock-related news from Naver News Search API.
