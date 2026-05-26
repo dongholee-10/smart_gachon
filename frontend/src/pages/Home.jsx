@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { analyzeNews, searchNews, fetchLatestNews } from '../services/api';
-import RiskCard from '../components/RiskCard';
+
+const QUICK_KEYWORDS = ['삼성전자', 'SK하이닉스', 'AI', '반도체', '실적', '증시', '규제', '소송'];
+const POPULAR_KEYWORDS = ['삼성전자', '반도체 실적', 'AI 주식', '코스피 전망', '규제 리스크'];
 
 const formatDate = (pubDate) => {
   if (!pubDate) return '';
@@ -52,13 +54,15 @@ function Home() {
     loadLatestNews();
   }, []);
 
-  const handleSearch = async () => {
-    if (!searchTerm.trim()) return alert('검색어를 입력해주세요!');
+  const runSearch = async (term) => {
+    const query = term.trim();
+    if (!query) return alert('검색어를 입력해주세요!');
+    setSearchTerm(query);
     setIsLoading(true);
     setNewsList([]);
     setAnalysisResults({});
     try {
-      const news = await searchNews(searchTerm);
+      const news = await searchNews(query);
       setNewsList(news);
       if (news.length === 0) alert('검색 결과가 없습니다.');
     } catch (error) {
@@ -67,6 +71,10 @@ function Home() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSearch = async () => {
+    await runSearch(searchTerm);
   };
 
   const sortedNewsWithIndex = [...newsList]
@@ -134,161 +142,214 @@ function Home() {
   const highRiskCount = analyzedValues.filter((r) => r.risk_level?.toLowerCase() === 'high').length;
 
   return (
-    <div className="max-w-5xl mx-auto py-16 px-4">
-      <div className="text-center mb-12">
-        <h2 className="text-5xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter italic">
-          RED FLAG NEWS
-        </h2>
-        <p className="text-lg text-slate-500 dark:text-slate-400">
-          실시간 뉴스 데이터를 기반으로 시장의 흐름을 분석합니다.
-        </p>
-      </div>
-
-      <div className="flex gap-3 mb-10 shadow-2xl rounded-2xl p-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          placeholder="분석할 기업 또는 키워드 (예: 삼성전자)"
-          className="flex-1 p-4 text-lg outline-none rounded-xl bg-transparent text-slate-900 dark:text-white placeholder-slate-400"
-        />
-        <button
-          onClick={handleSearch}
-          disabled={isLoading}
-          className="bg-blue-600 text-white px-10 py-4 rounded-xl font-bold hover:bg-blue-700 transition-all disabled:opacity-50"
-        >
-          {isLoading ? '검색 중...' : '뉴스 검색'}
-        </button>
-      </div>
-
-      {analyzedCount > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-          <RiskCard title="분석된 뉴스" value={`${analyzedCount}건`} description="클릭하여 분석 완료된 뉴스 수" isHighRisk={false} />
-          <RiskCard title="최고 위험 점수" value={`${maxScore}점`} description="분석된 뉴스 중 가장 높은 위험 점수" isHighRisk={maxScore >= 70} />
-          <RiskCard title="High Risk 뉴스" value={`${highRiskCount}건`} description="High Risk로 분류된 뉴스 수" isHighRisk={highRiskCount > 0} />
+    <div className="page-shell py-8 lg:py-10">
+      <section className="mx-auto max-w-4xl text-center">
+        <div className="pt-3">
+          <div className="mx-auto flex items-baseline justify-center gap-2">
+            <span className="text-5xl font-black leading-none text-[#03c75a] sm:text-6xl">RED</span>
+            <span className="text-5xl font-black leading-none text-slate-900 sm:text-6xl">FLAG</span>
+          </div>
+          <p className="mt-3 text-sm font-bold text-slate-500">
+            뉴스 검색부터 위험 분석까지 한 번에 확인하세요.
+          </p>
         </div>
-      )}
 
-      {newsList.length > 0 && (
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-sm text-slate-400 dark:text-slate-500">정렬:</span>
+        <div className="mx-auto mt-8 flex max-w-3xl items-center rounded-full border-2 border-[#03c75a] bg-white px-5 py-2 shadow-[0_6px_18px_rgba(3,199,90,0.12)]">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="검색어를 입력하세요"
+            className="min-w-0 flex-1 border-0 bg-transparent px-2 py-4 text-lg font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+          />
           <button
-            onClick={() => setSortOrder('latest')}
-            className={`text-sm px-4 py-1.5 rounded-full font-semibold transition-all ${
-              sortOrder === 'latest'
-                ? 'bg-blue-600 text-white'
-                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'
-            }`}
+            onClick={handleSearch}
+            disabled={isLoading}
+            className="h-11 rounded-full bg-[#03c75a] px-7 text-sm font-black text-white transition hover:bg-[#02b350] disabled:opacity-50"
           >
-            최신순
+            {isLoading ? '검색 중' : '검색'}
           </button>
-          <button
-            onClick={() => setSortOrder('oldest')}
-            className={`text-sm px-4 py-1.5 rounded-full font-semibold transition-all ${
-              sortOrder === 'oldest'
-                ? 'bg-blue-600 text-white'
-                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'
-            }`}
-          >
-            오래된순
-          </button>
-          <span className="text-xs text-slate-400 dark:text-slate-500 ml-2">
-            총 {newsList.length}건
-          </span>
         </div>
-      )}
 
-      <div className="space-y-4">
-        {sortedNewsWithIndex.map(({ item, originalIndex }) => {
-          const result = analysisResults[originalIndex];
-          const analyzing = isAnalyzing === originalIndex;
-          const displayScore = result?.score ?? result?.risk_score;
-
-          return (
-            <div
-              key={item.link || `news-${originalIndex}`}
-              onClick={() => handleAnalyze(item, originalIndex)}
-              className={`p-6 bg-white dark:bg-slate-800 rounded-2xl border-2 shadow-sm hover:shadow-md transition-all cursor-pointer ${
-                result
-                  ? getRiskBorderColor(result.risk_level)
-                  : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
-              }`}
+        <div className="mx-auto mt-6 grid max-w-3xl grid-cols-4 gap-3 text-center text-sm font-bold sm:grid-cols-8">
+          {QUICK_KEYWORDS.map((keyword) => (
+            <button
+              key={keyword}
+              onClick={() => runSearch(keyword)}
+              disabled={isLoading}
+              className="group flex flex-col items-center gap-2 text-slate-600 transition hover:text-[#03c75a]"
             >
-              <div className="flex justify-between items-center mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">
-                    News {originalIndex + 1}
-                  </span>
-                  {item.pubDate && (
-                    <span className="text-xs text-slate-400 dark:text-slate-500">
-                      🕐 {formatDate(item.pubDate)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {result && getRiskBadge(result.risk_level)}
-                  {analyzing && (
-                    <span className="text-xs text-slate-400 animate-pulse">🔍 분석 중...</span>
-                  )}
-                  {!result && !analyzing && (
-                    <span className="text-xs text-slate-300 dark:text-slate-600">클릭하여 분석 →</span>
-                  )}
-                </div>
-              </div>
-
-              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                {item.title}
-              </h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-3">
-                {item.description}
-              </p>
-
-              {result && (
-                <div className="mt-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">AI 분석 결과</span>
-                    <span className={`text-xl font-black ${getRiskTextColor(result.risk_level)}`}>
-                      {displayScore}점
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 mb-3">
-                    {result.reasoning ?? result.explanation}
-                  </p>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate('/analysis', { state: { result } });
-                    }}
-                    className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 transition-colors"
-                  >
-                    상세 리포트 보기 →
-                  </button>
-                </div>
-              )}
-
-              {!result && !analyzing && (
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm font-semibold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  원문 보기 →
-                </a>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {!isLoading && newsList.length === 0 && (
-        <div className="text-center py-20 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl">
-          <p className="text-2xl mb-3">🔍</p>
-          <p className="text-slate-400 dark:text-slate-500">기업명을 입력하고 최신 뉴스를 확인하세요.</p>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-lime-200 bg-[#f5fff1] text-base font-black text-[#03c75a] transition group-hover:border-[#03c75a] group-hover:bg-white">
+                {keyword.slice(0, 1)}
+              </span>
+              <span className="text-xs">{keyword}</span>
+            </button>
+          ))}
         </div>
-      )}
+
+        <div className="mx-auto mt-7 flex max-w-3xl flex-wrap justify-center gap-3 text-sm font-bold text-slate-500">
+          <span>뉴스 {newsList.length}건</span>
+          <span className="text-slate-300">|</span>
+          <span>High Risk {highRiskCount}건</span>
+          <span className="text-slate-300">|</span>
+          <span>최고 점수 {maxScore}점</span>
+        </div>
+      </section>
+
+      <section className="mt-10 grid gap-5 lg:grid-cols-[1fr_300px]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-xl font-black text-slate-900">뉴스</h3>
+              <p className="muted-copy mt-1 text-sm">뉴스를 선택하면 AI 위험 분석을 시작합니다.</p>
+            </div>
+            {newsList.length > 0 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSortOrder('latest')}
+                  className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
+                    sortOrder === 'latest'
+                      ? 'bg-[#03c75a] text-white'
+                      : 'secondary-button'
+                  }`}
+                >
+                  최신순
+                </button>
+                <button
+                  onClick={() => setSortOrder('oldest')}
+                  className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
+                    sortOrder === 'oldest'
+                      ? 'bg-[#03c75a] text-white'
+                      : 'secondary-button'
+                  }`}
+                >
+                  오래된순
+                </button>
+                <span className="text-xs font-semibold text-slate-400">총 {newsList.length}건</span>
+              </div>
+            )}
+          </div>
+
+          <div className="divide-y divide-slate-100">
+            {sortedNewsWithIndex.map(({ item, originalIndex }) => {
+              const result = analysisResults[originalIndex];
+              const analyzing = isAnalyzing === originalIndex;
+              const displayScore = result?.score ?? result?.risk_score;
+
+              return (
+                <div
+                  key={item.link || `news-${originalIndex}`}
+                  onClick={() => handleAnalyze(item, originalIndex)}
+                  className={`cursor-pointer bg-white py-5 transition ${
+                    result
+                      ? 'border-l-4 pl-4 ' + getRiskBorderColor(result.risk_level)
+                      : 'hover:bg-[#fbfff9]'
+                  }`}
+                >
+                  <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="rounded-md bg-lime-50 px-2 py-1 text-xs font-black uppercase text-emerald-700">
+                        뉴스 {originalIndex + 1}
+                      </span>
+                      {item.pubDate && (
+                        <span className="text-xs font-semibold text-slate-400">
+                          {formatDate(item.pubDate)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {result && getRiskBadge(result.risk_level)}
+                      {analyzing && (
+                        <span className="text-xs font-semibold text-slate-400">분석 중</span>
+                      )}
+                      {!result && !analyzing && (
+                        <span className="text-xs font-semibold text-slate-400">클릭하여 분석</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <h3 className="mb-2 text-lg font-black leading-snug text-slate-900 transition-colors hover:text-emerald-700">
+                    {stripTags(item.title)}
+                  </h3>
+                  <p className="mb-3 text-sm leading-6 text-slate-500">
+                    {stripTags(item.description)}
+                  </p>
+
+                  {result && (
+                    <div className="mt-4 rounded-lg border border-lime-200 bg-lime-50/70 p-4">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-xs font-black uppercase text-slate-400 tracking-normal">AI 분석 결과</span>
+                        <span className={`text-xl font-black ${getRiskTextColor(result.risk_level)}`}>
+                          {displayScore}점
+                        </span>
+                      </div>
+                      <p className="mb-3 line-clamp-2 text-sm leading-6 text-slate-600">
+                        {result.reasoning ?? result.explanation}
+                      </p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/analysis', { state: { result } });
+                        }}
+                        className="text-xs font-black text-emerald-700 transition-colors hover:text-emerald-900"
+                      >
+                        상세 리포트 보기
+                      </button>
+                    </div>
+                  )}
+
+                  {!result && !analyzing && (
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noreferrer"
+                    className="text-sm font-bold text-emerald-600 transition-colors hover:text-emerald-800"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      원문 보기
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {!isLoading && newsList.length === 0 && (
+            <div className="rounded-xl border border-dashed border-lime-300 bg-white py-16 text-center">
+              <p className="text-sm font-semibold text-emerald-600">기업명을 입력하고 최신 뉴스를 확인하세요.</p>
+            </div>
+          )}
+        </div>
+
+        <aside className="space-y-5">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="text-base font-black text-slate-900">인기 검색</h3>
+            <div className="mt-4 space-y-3">
+              {POPULAR_KEYWORDS.map((keyword, index) => (
+                <button
+                  key={keyword}
+                  onClick={() => runSearch(keyword)}
+                  disabled={isLoading}
+                  className="flex w-full items-center gap-3 text-left text-sm font-bold text-slate-700 transition hover:text-[#03c75a]"
+                >
+                  <span className="w-5 text-center text-[#03c75a]">{index + 1}</span>
+                  {keyword}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-lime-200 bg-[#f8fff4] p-5 shadow-sm">
+            <h3 className="text-base font-black text-slate-900">분석 흐름</h3>
+            <div className="mt-4 space-y-3 text-sm font-semibold text-slate-600">
+              <p>1. 기업 뉴스 검색</p>
+              <p>2. 뉴스 클릭 후 위험 점수 산출</p>
+              <p>3. 상세 리포트에서 판단 근거 확인</p>
+            </div>
+          </div>
+        </aside>
+      </section>
     </div>
   );
 }

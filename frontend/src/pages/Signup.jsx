@@ -65,25 +65,27 @@ function Signup({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4 py-10">
       <div className="w-full max-w-md">
-        {/* 로고 */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter italic mb-2">
-            RED FLAG
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Stock Risk Detection System
+        <div className="mb-9 text-center">
+          <Link to="/login" className="inline-flex items-baseline justify-center gap-1">
+            <span className="text-4xl font-black text-[#03c75a]">RED</span>
+            <span className="text-4xl font-black text-slate-900">FLAG</span>
+          </Link>
+          <p className="mt-3 text-sm font-semibold text-slate-500">
+            계정을 만들고 리스크 분석을 관리하세요.
           </p>
         </div>
 
-        {/* 카드 */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 border border-slate-100 dark:border-slate-700">
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">회원가입</h2>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-black text-slate-900">회원가입</h2>
+            <p className="mt-2 text-sm font-semibold text-slate-500">관심종목과 리스크 리포트를 저장하세요.</p>
+          </div>
 
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="mb-1.5 block text-sm font-bold text-slate-700">
                 이름
               </label>
               <input
@@ -91,11 +93,11 @@ function Signup({ onLogin }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="홍길동"
-                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                className="field-input rounded-xl p-4"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="mb-1.5 block text-sm font-bold text-slate-700">
                 이메일
               </label>
               <input
@@ -103,11 +105,11 @@ function Signup({ onLogin }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="example@email.com"
-                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                className="field-input rounded-xl p-4"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="mb-1.5 block text-sm font-bold text-slate-700">
                 비밀번호
               </label>
               <input
@@ -115,7 +117,7 @@ function Signup({ onLogin }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="대/소문자·숫자·특수문자 포함 8자 이상"
-                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                className="field-input rounded-xl p-4"
               />
               {/* 정책 체크리스트 — 입력하기 시작하면 표시 */}
               {password.length > 0 && (
@@ -127,8 +129,8 @@ function Signup({ onLogin }) {
                         key={rule.key}
                         className={`text-xs flex items-center gap-1.5 ${
                           ok
-                            ? 'text-green-600 dark:text-green-400'
-                            : 'text-slate-400 dark:text-slate-500'
+                            ? 'text-green-600'
+                            : 'text-slate-400'
                         }`}
                       >
                         <span>{ok ? '✓' : '·'}</span>
@@ -140,7 +142,7 @@ function Signup({ onLogin }) {
               )}
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="mb-1.5 block text-sm font-bold text-slate-700">
                 비밀번호 확인
               </label>
               <input
@@ -148,29 +150,29 @@ function Signup({ onLogin }) {
                 value={passwordConfirm}
                 onChange={(e) => setPasswordConfirm(e.target.value)}
                 placeholder="비밀번호 재입력"
-                className={`w-full p-4 rounded-xl border bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none transition ${
+                className={`field-input rounded-xl p-4 ${
                   passwordsMatch
                     ? 'border-green-500 focus:border-green-500'
                     : passwordsMismatch
                     ? 'border-red-400 focus:border-red-500'
-                    : 'border-slate-200 dark:border-slate-600 focus:border-blue-500'
+                    : 'border-slate-200 focus:border-[#03c75a]'
                 }`}
               />
               {/* 실시간 일치 여부 — 확인란을 비우면 숨김 */}
               {passwordsMatch && (
-                <p className="mt-2 text-xs flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                <p className="mt-2 flex items-center gap-1.5 text-xs text-green-600">
                   <span>✓</span> 비밀번호가 일치합니다
                 </p>
               )}
               {passwordsMismatch && (
-                <p className="mt-2 text-xs flex items-center gap-1.5 text-red-500 dark:text-red-400">
+                <p className="mt-2 flex items-center gap-1.5 text-xs text-red-500">
                   <span>✗</span> 비밀번호가 일치하지 않습니다
                 </p>
               )}
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-sm text-red-600 dark:text-red-400">
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-600">
                 {error}
               </div>
             )}
@@ -178,15 +180,15 @@ function Signup({ onLogin }) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 mt-2"
+              className="mt-2 w-full rounded-xl bg-[#03c75a] py-4 font-black text-white transition hover:bg-[#02b350] disabled:opacity-50"
             >
-              {isLoading ? '가입 중...' : '회원가입'}
+              {isLoading ? '가입 중' : '회원가입'}
             </button>
           </form>
 
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
+          <p className="mt-6 text-center text-sm font-semibold text-slate-500">
             이미 계정이 있으신가요?{' '}
-            <Link to="/login" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+            <Link to="/login" className="font-black text-[#03c75a] hover:underline">
               로그인
             </Link>
           </p>

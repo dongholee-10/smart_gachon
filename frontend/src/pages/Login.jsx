@@ -32,25 +32,27 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4 py-10">
       <div className="w-full max-w-md">
-        {/* 로고 */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter italic mb-2">
-            RED FLAG
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Stock Risk Detection System
+        <div className="mb-9 text-center">
+          <Link to="/login" className="inline-flex items-baseline justify-center gap-1">
+            <span className="text-4xl font-black text-[#03c75a]">RED</span>
+            <span className="text-4xl font-black text-slate-900">FLAG</span>
+          </Link>
+          <p className="mt-3 text-sm font-semibold text-slate-500">
+            뉴스 리스크 분석을 시작하세요.
           </p>
         </div>
 
-        {/* 카드 */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 border border-slate-100 dark:border-slate-700">
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">로그인</h2>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-black text-slate-900">로그인</h2>
+            <p className="mt-2 text-sm font-semibold text-slate-500">계정으로 접속해 분석을 이어가세요.</p>
+          </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="mb-1.5 block text-sm font-bold text-slate-700">
                 이메일
               </label>
               <input
@@ -58,11 +60,11 @@ function Login({ onLogin }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="example@email.com"
-                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                className="field-input rounded-xl p-4"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="mb-1.5 block text-sm font-bold text-slate-700">
                 비밀번호
               </label>
               <input
@@ -70,12 +72,12 @@ function Login({ onLogin }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="비밀번호 입력"
-                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                className="field-input rounded-xl p-4"
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-sm text-red-600 dark:text-red-400">
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-600">
                 {error}
               </div>
             )}
@@ -83,15 +85,15 @@ function Login({ onLogin }) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 mt-2"
+              className="mt-2 w-full rounded-xl bg-[#03c75a] py-4 font-black text-white transition hover:bg-[#02b350] disabled:opacity-50"
             >
-              {isLoading ? '로그인 중...' : '로그인'}
+              {isLoading ? '로그인 중' : '로그인'}
             </button>
           </form>
 
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
+          <p className="mt-6 text-center text-sm font-semibold text-slate-500">
             계정이 없으신가요?{' '}
-            <Link to="/signup" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+            <Link to="/signup" className="font-black text-[#03c75a] hover:underline">
               회원가입
             </Link>
           </p>

@@ -38,13 +38,64 @@ def remove_duplicates(news_list: list) -> list:
 LATEST_NEWS_KEYWORDS = ["주가", "증시", "코스피", "코스닥", "반도체", "AI 주식", "실적"]
 
 
+def _format_mock_pub_date(days_ago: int = 0, hours_ago: int = 0) -> str:
+    dt = datetime.now(timezone.utc) - timedelta(days=days_ago, hours=hours_ago)
+    return dt.strftime("%a, %d %b %Y %H:%M:%S %z")
+
+
+def _mock_news(display: int = 5, query: str = "시장") -> list:
+    base_items = [
+        {
+            "score": 4,
+            "title": f"{query} 관련 실적 전망과 투자 심리 점검",
+            "description": "최근 매출 전망, 수급 흐름, 업종별 리스크 요인을 함께 점검하는 시장 분석입니다.",
+            "link": "https://example.com/redflag/mock-news-1",
+            "pubDate": _format_mock_pub_date(hours_ago=1),
+        },
+        {
+            "score": 3,
+            "title": f"{query} 주가 변동성 확대, 위험 신호는 제한적",
+            "description": "단기 변동성은 커졌지만 주요 재무 지표와 뉴스 흐름은 중립 구간에 머물고 있습니다.",
+            "link": "https://example.com/redflag/mock-news-2",
+            "pubDate": _format_mock_pub_date(hours_ago=4),
+        },
+        {
+            "score": 5,
+            "title": f"{query} 공급망 이슈와 매출 둔화 우려 부각",
+            "description": "공급망 차질, 비용 증가, 매출 둔화 가능성이 투자자 관심 요인으로 떠올랐습니다.",
+            "link": "https://example.com/redflag/mock-news-3",
+            "pubDate": _format_mock_pub_date(hours_ago=8),
+        },
+        {
+            "score": 2,
+            "title": f"{query} 업종 전반 AI 투자 확대 기대",
+            "description": "AI와 자동화 투자 확대가 중장기 성장 동력으로 평가되고 있습니다.",
+            "link": "https://example.com/redflag/mock-news-4",
+            "pubDate": _format_mock_pub_date(days_ago=1),
+        },
+        {
+            "score": 4,
+            "title": f"{query} 규제 변화에 따른 시장 영향 분석",
+            "description": "정책과 규제 변화가 기업 실적, 투자 심리, 주가 흐름에 미칠 영향을 분석합니다.",
+            "link": "https://example.com/redflag/mock-news-5",
+            "pubDate": _format_mock_pub_date(days_ago=1, hours_ago=5),
+        },
+    ]
+    return base_items[:display]
+
+
+def _has_naver_credentials() -> bool:
+    return bool(settings.NAVER_CLIENT_ID and settings.NAVER_CLIENT_SECRET)
+
+
 def fetch_latest_news(display: int = 5) -> list:
     """
     Fetch latest general stock market news for the home screen.
     Cycles through general keywords and returns the top N most recent items.
     """
-    if not settings.NAVER_CLIENT_ID or not settings.NAVER_CLIENT_SECRET:
-        raise Exception("Naver API keys are missing. Please check your .env file.")
+    if not _has_naver_credentials():
+        logger.warning("네이버 API 키가 없어 최신 뉴스 mock 데이터를 반환합니다.")
+        return _mock_news(display=display, query="국내 증시")
 
     headers = {
         "X-Naver-Client-Id": settings.NAVER_CLIENT_ID,
@@ -118,8 +169,9 @@ def fetch_news(query: str, display: int = 10) -> list:
     if not query:
         raise ValueError("Query is required")
 
-    if not settings.NAVER_CLIENT_ID or not settings.NAVER_CLIENT_SECRET:
-        raise Exception("Naver API keys are missing. Please check your .env file.")
+    if not _has_naver_credentials():
+        logger.warning("네이버 API 키가 없어 '%s' 검색 mock 데이터를 반환합니다.", query)
+        return _mock_news(display=min(display, 5), query=query)
 
     headers = {
         "X-Naver-Client-Id": settings.NAVER_CLIENT_ID,

@@ -36,6 +36,7 @@ class Settings:
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     ANTHROPIC_MODEL: str = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+    ENABLE_FINBERT: bool = os.getenv("ENABLE_FINBERT", "false").lower() in {"1", "true", "yes", "on"}
 
     CORS_ORIGINS: List[str] = os.getenv(
         "CORS_ORIGINS",
