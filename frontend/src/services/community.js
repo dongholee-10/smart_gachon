@@ -4,7 +4,7 @@ import api from './api';
 // 🔧 Mock 모드
 // 백엔드 /community 완성되면 useMockCommunity = false
 // ─────────────────────────────────────────────
-export const useMockCommunity = true;
+export const useMockCommunity = false;
 
 let MOCK_POSTS = [
   {

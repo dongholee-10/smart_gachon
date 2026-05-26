@@ -12,8 +12,10 @@ logging.basicConfig(
 
 from app.api.analyze_router import router as analyze_router
 from app.api.auth_router import router as auth_router
+from app.api.community_router import router as community_router
 from app.api.news_router import router as news_router
 from app.api.report_router import router as report_router
+from app.api.watchlist_router import router as watchlist_router
 from app.core.config import settings
 from app.database.session import init_db
 
@@ -47,6 +49,8 @@ app.include_router(auth_router)
 app.include_router(analyze_router)
 app.include_router(news_router)
 app.include_router(report_router)
+app.include_router(community_router)
+app.include_router(watchlist_router)
 
 
 @app.get("/")

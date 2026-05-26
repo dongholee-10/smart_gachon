@@ -13,7 +13,8 @@ def generate_report(db: Session, result_id: int) -> Optional[dict]:
     risk_factors = result.risk_factors or []
     if risk_factors:
         factors_text = ", ".join(
-            f"{factor['category']}({factor['keyword']})" for factor in risk_factors
+            f"{factor.get('category', 'Unknown')}({factor.get('keyword', 'Unknown')})"
+            for factor in risk_factors
         )
     else:
         factors_text = "No major red flag factors detected"

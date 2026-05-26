@@ -4,7 +4,7 @@ import api from './api';
 // 🔧 Mock 모드
 // 백엔드 /watchlist 완성되면 useMockWatchlist = false
 // ─────────────────────────────────────────────
-export const useMockWatchlist = true;
+export const useMockWatchlist = false;
 
 let MOCK_WATCHLIST = [
   { id: 1, ticker: '005930', name: '삼성전자', memo: '반도체 업황 모니터링', addedAt: '2026-05-01T00:00:00Z' },
