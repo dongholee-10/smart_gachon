@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { analyzeNews, searchNews, fetchLatestNews } from '../services/api';
 import { fetchTrendingStocks } from '../services/stocks';
+import AnimatedRiskGauge from '../components/AnimatedRiskGauge';
 
 // 백엔드 /stocks/trending 응답이 빌 때 (네이버 API 미연결 등) 보여줄 안전한 fallback.
 // 평소엔 실시간 핫 종목으로 자동 교체된다.
@@ -306,13 +307,18 @@ function Home() {
 
                   {result && (
                     <div className="mt-4 rounded-lg border border-lime-200 bg-lime-50/70 p-4">
-                      <div className="mb-2 flex items-center justify-between">
+                      <div className="mb-3 flex items-center justify-between">
                         <span className="text-xs font-black uppercase text-slate-400 tracking-normal">AI 분석 결과</span>
-                        <span className={`text-xl font-black ${getRiskTextColor(result.risk_level)}`}>
-                          {displayScore}점
+                        <span className={`text-xs font-black uppercase tracking-widest ${getRiskTextColor(result.risk_level)}`}>
+                          {result.risk_level} Risk
                         </span>
                       </div>
-                      <p className="mb-3 line-clamp-2 text-sm leading-6 text-slate-600">
+                      <AnimatedRiskGauge
+                        score={displayScore}
+                        level={result.risk_level}
+                        size="sm"
+                      />
+                      <p className="mt-3 mb-3 line-clamp-2 text-sm leading-6 text-slate-600">
                         {result.reasoning ?? result.explanation}
                       </p>
                       <button
