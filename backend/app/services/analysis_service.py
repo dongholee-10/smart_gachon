@@ -15,11 +15,18 @@ from app.services.news_service import fetch_news
 
 
 def _sentiment_breakdown(label: str, score: float) -> dict:
-    remainder = max(0.0, 1.0 - score) / 2
-    breakdown = {"positive": remainder, "neutral": remainder, "negative": remainder}
-    if label in breakdown:
-        breakdown[label] = score
-    return breakdown
+    """감성 레이블의 확률을 positive/neutral/negative 3개 값으로 분배.
+    주요 레이블이 score를 가져가고, 나머지 두 항목이 (1-score)/2씩 나눠 가짐.
+    합계는 항상 1.0.
+    """
+    score = max(0.0, min(1.0, score))  # 0~1 범위 보장
+    remainder = (1.0 - score) / 2
+    if label == "positive":
+        return {"positive": score, "neutral": remainder, "negative": remainder}
+    if label == "negative":
+        return {"positive": remainder, "neutral": remainder, "negative": score}
+    # neutral (기본값)
+    return {"positive": remainder, "neutral": score, "negative": remainder}
 
 
 def _to_response_dict(record: AnalysisResult, sentiment_scores: dict) -> dict:
