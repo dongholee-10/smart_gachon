@@ -3,7 +3,7 @@ import { getUser } from '../services/auth';
 import {
   useMockCommunity,
   mockGetPosts, mockCreatePost, mockAddComment, mockLikePost,
-  getPosts, createPost, addComment, likePost,
+  getPosts, createPost, updatePost, deletePost, addComment, likePost,
 } from '../services/community';
 
 const formatDate = (iso) => {
@@ -15,6 +15,10 @@ const formatDate = (iso) => {
   } catch { return ''; }
 };
 
+// 백엔드 PostOut 은 created_at (snake), mock 은 createdAt — 둘 다 수용
+const postDate = (post) => post.created_at ?? post.createdAt;
+const commentDate = (c) => c.created_at ?? c.createdAt;
+
 function Community() {
   const user = getUser();
   const [posts, setPosts] = useState([]);
@@ -25,6 +29,10 @@ function Community() {
 
   // 글쓰기 폼
   const [form, setForm] = useState({ title: '', content: '', ticker: '' });
+
+  // 인라인 편집 상태 — 한 번에 한 글만 편집
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '', content: '', ticker: '' });
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -79,6 +87,48 @@ function Community() {
       setCommentText('');
     } catch (e) { alert(e.message); }
   };
+
+  const startEdit = (post) => {
+    setEditingId(post.id);
+    setEditForm({ title: post.title, content: post.content, ticker: post.ticker || '' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm({ title: '', content: '', ticker: '' });
+  };
+
+  const handleUpdatePost = async (postId) => {
+    if (!editForm.title.trim() || !editForm.content.trim()) {
+      return alert('제목과 내용은 비울 수 없습니다.');
+    }
+    try {
+      const updated = await updatePost(postId, {
+        title: editForm.title,
+        content: editForm.content,
+        ticker: editForm.ticker || null,
+      });
+      setPosts((prev) => prev.map((p) => (p.id === postId ? updated : p)));
+      if (selectedPost?.id === postId) setSelectedPost(updated);
+      cancelEdit();
+    } catch (e) {
+      alert(e.response?.data?.detail || '수정에 실패했습니다.');
+    }
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!confirm('정말 삭제할까요? 댓글도 함께 사라집니다.')) return;
+    try {
+      await deletePost(postId);
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+      if (selectedPost?.id === postId) setSelectedPost(null);
+    } catch (e) {
+      alert(e.response?.data?.detail || '삭제에 실패했습니다.');
+    }
+  };
+
+  // 본인 글 여부 — 백엔드가 PostOut.user_id 노출. mock 에는 user_id 가 없어서 false.
+  const isOwner = (post) => user?.id != null && post.user_id === user.id;
 
   return (
     <div className="page-shell max-w-5xl py-10 lg:py-14">
@@ -150,81 +200,149 @@ function Community() {
         </div>
       ) : (
         <div className="space-y-4">
-          {posts.map((post) => (
-            <div
-              key={post.id}
-              className="surface-panel overflow-hidden rounded-xl"
-            >
-              {/* 게시글 헤더 */}
-              <div
-                className="cursor-pointer p-6 transition hover:bg-slate-50 dark:hover:bg-slate-800/70"
-                onClick={() => setSelectedPost(selectedPost?.id === post.id ? null : post)}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-400">{post.author}</span>
-                    {post.ticker && (
-                      <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
-                        #{post.ticker}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-slate-400">{formatDate(post.createdAt)}</span>
-                </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{post.title}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">{post.content}</p>
-                <div className="flex items-center gap-4 mt-4">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleLike(post.id); }}
-                    className="text-xs text-slate-400 hover:text-red-500 transition font-semibold flex items-center gap-1"
-                  >
-                    Like {post.likes}
-                  </button>
-                  <span className="text-xs text-slate-400">
-                    Comments {post.comments.length}
-                  </span>
-                </div>
-              </div>
+          {posts.map((post) => {
+            const owner = isOwner(post);
+            const editing = editingId === post.id;
 
-              {/* 댓글 섹션 */}
-              {selectedPost?.id === post.id && (
-                <div className="border-t border-slate-100 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-950/40">
-                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6">{post.content}</p>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
-                    댓글 {post.comments.length}개
-                  </h4>
-                  <div className="space-y-3 mb-4">
-                    {post.comments.map((c) => (
-                      <div key={c.id} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-                        <div className="flex justify-between mb-1">
-                          <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{c.author}</span>
-                          <span className="text-xs text-slate-400">{formatDate(c.createdAt)}</span>
-                        </div>
-                        <p className="text-sm text-slate-700 dark:text-slate-300">{c.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {/* 댓글 입력 */}
-                  <div className="flex gap-2">
+            return (
+              <div
+                key={post.id}
+                className="surface-panel overflow-hidden rounded-xl"
+              >
+                {/* 편집 모드 */}
+                {editing ? (
+                  <div className="space-y-3 p-6">
+                    <h3 className="font-bold text-slate-900 dark:text-white">글 수정</h3>
                     <input
                       type="text"
-                      placeholder="댓글을 입력하세요..."
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
-                      className="field-input flex-1 rounded-lg p-3 text-sm"
+                      value={editForm.title}
+                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                      className="field-input rounded-lg p-3"
+                      placeholder="제목"
                     />
-                    <button
-                      onClick={() => handleAddComment(post.id)}
-                      className="primary-button rounded-lg px-5 py-3 text-sm font-bold"
-                    >
-                      등록
-                    </button>
+                    <input
+                      type="text"
+                      value={editForm.ticker}
+                      onChange={(e) => setEditForm({ ...editForm, ticker: e.target.value })}
+                      className="field-input rounded-lg p-3"
+                      placeholder="종목 (선택)"
+                    />
+                    <textarea
+                      value={editForm.content}
+                      onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                      rows={4}
+                      className="field-input resize-none rounded-lg p-3"
+                      placeholder="내용"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleUpdatePost(post.id)}
+                        className="primary-button rounded-lg px-6 py-2 text-sm font-bold"
+                      >
+                        저장
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="secondary-button rounded-lg px-6 py-2 text-sm font-bold"
+                      >
+                        취소
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                ) : (
+                  <>
+                    {/* 게시글 헤더 */}
+                    <div
+                      className="cursor-pointer p-6 transition hover:bg-slate-50 dark:hover:bg-slate-800/70"
+                      onClick={() => setSelectedPost(selectedPost?.id === post.id ? null : post)}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-400">{post.author}</span>
+                          {post.ticker && (
+                            <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
+                              #{post.ticker}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-slate-400">{formatDate(postDate(post))}</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{post.title}</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">{post.content}</p>
+                      <div className="flex items-center justify-between gap-4 mt-4">
+                        <div className="flex items-center gap-4">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleLike(post.id); }}
+                            className="text-xs text-slate-400 hover:text-red-500 transition font-semibold flex items-center gap-1"
+                          >
+                            Like {post.likes}
+                          </button>
+                          <span className="text-xs text-slate-400">
+                            Comments {post.comments.length}
+                          </span>
+                        </div>
+                        {/* 본인 글만 보이는 수정/삭제 */}
+                        {owner && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); startEdit(post); }}
+                              className="rounded-md border border-slate-300 px-3 py-1 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                            >
+                              수정
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeletePost(post.id); }}
+                              className="rounded-md border border-red-300 px-3 py-1 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:border-red-900/70 dark:text-red-400 dark:hover:bg-red-950/30"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 댓글 섹션 */}
+                    {selectedPost?.id === post.id && (
+                      <div className="border-t border-slate-100 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-950/40">
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6">{post.content}</p>
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+                          댓글 {post.comments.length}개
+                        </h4>
+                        <div className="space-y-3 mb-4">
+                          {post.comments.map((c) => (
+                            <div key={c.id} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                              <div className="flex justify-between mb-1">
+                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{c.author}</span>
+                                <span className="text-xs text-slate-400">{formatDate(commentDate(c))}</span>
+                              </div>
+                              <p className="text-sm text-slate-700 dark:text-slate-300">{c.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {/* 댓글 입력 */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="댓글을 입력하세요..."
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
+                            className="field-input flex-1 rounded-lg p-3 text-sm"
+                          />
+                          <button
+                            onClick={() => handleAddComment(post.id)}
+                            className="primary-button rounded-lg px-5 py-3 text-sm font-bold"
+                          >
+                            등록
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
