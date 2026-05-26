@@ -1,14 +1,11 @@
+import html
 import re
 
 
 def clean_html(text: str) -> str:
-    """
-    Remove HTML tags from Naver News API response.
-    Example:
-    <b>삼성전자</b> -> 삼성전자
-    """
+    """Remove HTML tags and decode HTML entities from Naver News API response."""
     if not text:
         return ""
-
-    clean_pattern = re.compile("<.*?>")
-    return re.sub(clean_pattern, "", text)
+    # 태그 제거 후 HTML 엔티티 디코딩 (&amp; → &, &lt; → < 등)
+    no_tags = re.sub(r"<[^>]+>", "", text)
+    return html.unescape(no_tags)

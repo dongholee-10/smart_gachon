@@ -1,8 +1,12 @@
+import logging
+
 import requests
 from datetime import datetime, timedelta, timezone
 
 from app.core.config import settings
 from app.utils.text_cleaner import clean_html
+
+logger = logging.getLogger(__name__)
 
 NAVER_NEWS_URL = "https://openapi.naver.com/v1/search/news.json"
 
@@ -67,6 +71,7 @@ def fetch_latest_news(display: int = 5) -> list:
                 data = response.json()
                 all_items.extend(data.get("items", []))
         except Exception:
+            logger.debug("네이버 뉴스 키워드 '%s' 요청 실패, 건너뜀", keyword)
             continue
 
     now = datetime.now(timezone.utc)

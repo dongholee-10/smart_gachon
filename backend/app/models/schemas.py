@@ -32,8 +32,8 @@ def _validate_password(value: str) -> str:
 
 class SignupRequest(BaseModel):
     email: EmailStr
-    password: str
-    name: str
+    password: str = Field(min_length=8, max_length=128)
+    name: str = Field(min_length=1, max_length=50)
 
     @field_validator("password")
     @classmethod
@@ -60,11 +60,11 @@ class AuthResponse(BaseModel):
 
 # ── Analysis ────────────────────────────────────────────────────────────
 class AnalyzeRequest(BaseModel):
-    title: Optional[str] = None
-    content: Optional[str] = None
-    text: Optional[str] = None
-    ticker: Optional[str] = None
-    news_link: Optional[str] = None
+    title: Optional[str] = Field(default=None, max_length=500)
+    content: Optional[str] = Field(default=None, max_length=5000)
+    text: Optional[str] = Field(default=None, max_length=5000)
+    ticker: Optional[str] = Field(default=None, max_length=20)
+    news_link: Optional[str] = Field(default=None, max_length=2048)
 
 
 class CompanyAnalyzeRequest(BaseModel):
