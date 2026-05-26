@@ -4,6 +4,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from app.data import stocks as stock_data
+from app.services import trending_service
 
 router = APIRouter(prefix="/stocks", tags=["Stocks"])
 
@@ -14,6 +15,10 @@ class StockOut(BaseModel):
     market: str
 
 
+class TrendingStockOut(StockOut):
+    article_count: int
+
+
 @router.get("/search", response_model=List[StockOut])
 def search_stocks(
     q: str = Query("", description="검색어 (종목명 일부 또는 종목코드)"),
@@ -21,3 +26,9 @@ def search_stocks(
 ):
     """자동완성용. 빈 쿼리는 빈 리스트를 반환해 UI 가 명시적으로 입력하게 유도."""
     return stock_data.search(q, limit=limit)
+
+
+@router.get("/trending", response_model=List[TrendingStockOut])
+def trending_stocks(limit: int = Query(8, ge=1, le=20)):
+    """네이버 뉴스 검색 결과가 많은 순으로 핫 종목 반환. 메모리 5분 캐시."""
+    return trending_service.get_trending(limit=limit)
