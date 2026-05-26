@@ -68,31 +68,31 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+      <div className="min-h-screen bg-[#f7fff3] transition-colors duration-300 dark:bg-slate-900">
         {/* 네비게이션 — 로그인 상태일 때만 표시 */}
         {user && (
-          <nav className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/88 text-slate-900 shadow-sm backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/82 dark:text-white">
+          <nav className="sticky top-0 z-40 border-b border-lime-200/80 bg-white/90 text-slate-900 shadow-sm backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/82 dark:text-white">
             <div className="page-shell flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between">
               <Link to="/" className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-sm font-black text-white dark:bg-white dark:text-slate-950">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#03c75a] text-sm font-black text-white dark:bg-emerald-400 dark:text-slate-950">
                   RF
                 </span>
                 <div>
                   <h1 className="text-lg font-black leading-tight tracking-normal">RED FLAG</h1>
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <p className="text-xs font-semibold text-emerald-700 dark:text-slate-400">
                     Stock Risk Intelligence
                   </p>
                 </div>
               </Link>
 
               <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-                <Link to="/" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">Dashboard</Link>
-                <Link to="/analysis" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">Risk Analysis</Link>
-                <Link to="/watchlist" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">관심종목</Link>
-                <Link to="/community" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">커뮤니티</Link>
+                <Link to="/" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-lime-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">Dashboard</Link>
+                <Link to="/analysis" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-lime-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">Risk Analysis</Link>
+                <Link to="/watchlist" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-lime-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">관심종목</Link>
+                <Link to="/community" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-lime-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">커뮤니티</Link>
 
                 {/* 유저 이름 */}
-                <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+                <span className="rounded-lg border border-lime-200 bg-lime-50 px-3 py-2 text-xs text-emerald-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
                   {user.name || user.email}
                 </span>
 
