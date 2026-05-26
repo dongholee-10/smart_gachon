@@ -43,6 +43,8 @@ services:
       DATABASE_URL: postgresql+psycopg2://redflag:redflag@db:5432/redflag
       # 브라우저는 호스트의 localhost:5173 으로 들어오므로 그 origin 만 허용하면 됨.
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      # FinBERT 실추론 활성화 — startup 시 KR/EN 파이프라인을 백그라운드로 워밍.
+      ENABLE_FINBERT: "true"
     ports:
       - "8000:8000"
     depends_on:
