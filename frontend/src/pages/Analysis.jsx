@@ -1,31 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { fetchReport } from '../services/api';
-
-const RiskGauge = ({ score }) => {
-  const pct = Math.min(Math.max(score ?? 0, 0), 100);
-  const color = pct >= 70 ? '#e74c3c' : pct >= 40 ? '#f39c12' : '#27ae60';
-  return (
-    <div className="w-full">
-      <div className="flex justify-between text-xs text-slate-400 mb-1">
-        <span>0</span>
-        <span className="font-bold" style={{ color }}>{pct}점</span>
-        <span>100</span>
-      </div>
-      <div className="h-4 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-        <div
-          className="h-4 rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, backgroundColor: color }}
-        />
-      </div>
-      <div className="flex justify-between text-xs mt-1 text-slate-400">
-        <span>Low</span>
-        <span>Medium</span>
-        <span>High</span>
-      </div>
-    </div>
-  );
-};
+import AnimatedRiskGauge from '../components/AnimatedRiskGauge';
 
 const SentimentBar = ({ positive = 0, neutral = 0, negative = 0 }) => (
   <div className="space-y-3">
@@ -130,21 +106,15 @@ function Analysis() {
 
       <div className="space-y-6">
         <div className={`rounded-xl border p-6 ${style.border} ${style.bg}`}>
-          <div className="mb-6 flex items-start justify-between gap-6">
-            <div>
-              <span className={`text-xs font-black uppercase tracking-normal ${style.text}`}>
-                위험 수준
-              </span>
-              <p className={`text-4xl font-black mt-1 ${style.text}`}>
-                {result.risk_level || 'N/A'}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className={`text-6xl font-black ${style.text}`}>{score}</span>
-              <span className={`text-lg ${style.text}`}>점</span>
-            </div>
+          <div className="mb-6">
+            <span className={`text-xs font-black uppercase tracking-normal ${style.text}`}>
+              위험 수준
+            </span>
+            <p className={`text-4xl font-black mt-1 ${style.text}`}>
+              {result.risk_level || 'N/A'}
+            </p>
           </div>
-          <RiskGauge score={score} />
+          <AnimatedRiskGauge score={score} level={result.risk_level} size="lg" />
         </div>
 
         <div className="surface-panel rounded-xl p-6">

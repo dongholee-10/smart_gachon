@@ -39,9 +39,7 @@ RISK_KEYWORDS = {
 
 
 def detect_risk_factors(text: str) -> list:
-    """
-    Detect red flag keywords from text.
-    """
+    """Detect red flag keywords from text."""
     if not text:
         return []
 
@@ -60,39 +58,56 @@ def detect_risk_factors(text: str) -> list:
     return detected
 
 
+# ── 임계값 ─────────────────────────────────────────────────────────────────
+RISK_LEVEL_HIGH = 67
+RISK_LEVEL_MEDIUM = 33
+
+
 def calculate_risk_score(
     sentiment_label: str,
     sentiment_score: float,
-    risk_factors: list
+    risk_factors: list,
 ) -> int:
-    """
-    Calculate risk score based on sentiment and detected risk factors.
-    Score range: 0 to 100.
-    """
-    score = 0
+    """Continuous-feel risk score in [0, 100] (rounded to int — DB column is Integer).
 
+    설계:
+    1. FinBERT 의 0~1 확률을 가중치로 그대로 사용 → 이산 합산 회피, 0~100 사이가 거의 균등.
+    2. 감성 기여도 (~55점) + 룰 기여도 (~45점) + 강한 부정 보너스 (~10점).
+    3. 같은 카테고리 키워드 반복은 한계 효용이 줄어들고, 카테고리 다양성이 더 큰 비중.
+       (\"파산\" 한 단어보다 \"파산 + CEO 사임 + 공정위 조사\" 가 위험.)
+    """
+    confidence = max(0.0, min(1.0, sentiment_score))
+
+    # 감성 기여도 0 ~ 55
     if sentiment_label == "negative":
-        score += 40
-    elif sentiment_label == "neutral":
-        score += 15
+        sentiment_part = 25 + confidence * 30  # 부정 잡히면 베이스 25, 확신 1.0 이면 +30
     elif sentiment_label == "positive":
-        score += 0
+        sentiment_part = -confidence * 15  # 긍정 강하면 점수를 깎음
+    else:  # neutral
+        sentiment_part = 8 + confidence * 6
 
-    score += len(risk_factors) * 20
+    # 룰 기여도 0 ~ 45
+    n_factors = len(risk_factors)
+    unique_categories = {f["category"] for f in risk_factors}
+    diversity = len(unique_categories)
+    repetition_part = 12 * (1 - 0.6 ** n_factors) if n_factors else 0
+    diversity_part = diversity * 9
+    rule_part = min(45, repetition_part + diversity_part)
 
-    if sentiment_label == "negative" and sentiment_score >= 0.90:
-        score += 10
+    # 강한 부정 + 다중 카테고리 보너스 0 ~ 10
+    if sentiment_label == "negative" and confidence >= 0.85 and diversity >= 2:
+        bonus = min(10, (diversity - 1) * 3 + (confidence - 0.85) * 30)
+    else:
+        bonus = 0
 
-    return min(score, 100)
+    raw = sentiment_part + rule_part + bonus
+    return int(round(max(0.0, min(100.0, raw))))
 
 
 def classify_risk_level(risk_score: int) -> str:
-    """
-    Convert numeric risk score into discrete risk level.
-    """
-    if risk_score >= 70:
+    """Convert numeric risk score into Low / Medium / High."""
+    if risk_score >= RISK_LEVEL_HIGH:
         return "High"
-    elif risk_score >= 40:
+    if risk_score >= RISK_LEVEL_MEDIUM:
         return "Medium"
-    else:
-        return "Low"
+    return "Low"
