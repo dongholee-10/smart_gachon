@@ -132,3 +132,90 @@ class ReportResponse(BaseModel):
     result_id: int
     summary: str
     recommendation: str
+
+
+# ── Community ────────────────────────────────────────────────────────────────
+
+class CommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    post_id: int
+    content: str
+    author: str = ""
+    created_at: Optional[datetime] = None
+
+    @classmethod
+    def from_orm_with_author(cls, comment):
+        return cls(
+            id=comment.id,
+            post_id=comment.post_id,
+            content=comment.content,
+            author=comment.author.name if comment.author else "익명",
+            created_at=comment.created_at,
+        )
+
+
+class PostOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    title: str
+    content: str
+    ticker: Optional[str] = None
+    likes: int = 0
+    author: str = ""
+    comments: List[CommentOut] = []
+    created_at: Optional[datetime] = None
+
+    @classmethod
+    def from_orm_with_relations(cls, post):
+        return cls(
+            id=post.id,
+            title=post.title,
+            content=post.content,
+            ticker=post.ticker,
+            likes=post.likes,
+            author=post.author.name if post.author else "익명",
+            comments=[CommentOut.from_orm_with_author(c) for c in post.comments],
+            created_at=post.created_at,
+        )
+
+
+class PostCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1, max_length=5000)
+    ticker: Optional[str] = Field(default=None, max_length=20)
+
+
+class CommentCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=1000)
+
+
+# ── Watchlist ────────────────────────────────────────────────────────────────
+
+class WatchlistItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    ticker: str
+    name: str
+    memo: str = ""
+    addedAt: Optional[datetime] = None
+
+    @classmethod
+    def from_orm(cls, item):
+        return cls(
+            id=item.id,
+            ticker=item.ticker,
+            name=item.name,
+            memo=item.memo or "",
+            addedAt=item.added_at,
+        )
+
+
+class WatchlistItemCreate(BaseModel):
+    ticker: str = Field(min_length=1, max_length=20)
+    name: str = Field(min_length=1, max_length=100)
+    memo: Optional[str] = Field(default="", max_length=500)
+
+
+class WatchlistMemoUpdate(BaseModel):
+    memo: str = Field(max_length=500)
