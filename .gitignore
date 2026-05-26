@@ -10,7 +10,8 @@ venv/
 
 # Env
 .env
-.env.local
+.env.*
+!.env.example
 
 # DB
 *.db
