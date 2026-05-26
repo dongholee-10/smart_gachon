@@ -135,70 +135,65 @@ function Home() {
   const highRiskCount = analyzedValues.filter((r) => r.risk_level?.toLowerCase() === 'high').length;
 
   return (
-    <div className="page-shell py-8 lg:py-12">
-      <section className="overflow-hidden rounded-2xl border border-lime-200 bg-[#fafff7] shadow-xl shadow-lime-200/50 dark:border-slate-800 dark:bg-slate-950 dark:shadow-black/30">
-        <div className="relative px-6 py-10 text-center sm:px-10 lg:px-16 lg:py-14">
-          <div className="absolute left-6 top-6 hidden rounded-full border border-lime-200 bg-white px-4 py-2 text-xs font-black text-emerald-700 shadow-sm sm:block">
-            실시간 뉴스 리스크 검색
+    <div className="page-shell py-8 lg:py-10">
+      <section className="mx-auto max-w-4xl text-center">
+        <div className="pt-6">
+          <div className="mx-auto flex items-end justify-center gap-1">
+            <span className="text-6xl font-black leading-none text-[#03c75a] sm:text-7xl">R</span>
+            <span className="pb-2 text-4xl font-black leading-none text-[#03c75a] sm:text-5xl">ED</span>
+            <span className="pb-2 text-4xl font-black leading-none text-slate-900 dark:text-white sm:text-5xl">FLAG</span>
           </div>
-          <img
-            src={heroImage}
-            alt=""
-            className="mx-auto h-24 w-24 object-contain opacity-95"
+          <p className="mt-3 text-sm font-bold text-slate-500">
+            뉴스 검색부터 위험 분석까지 한 번에 확인하세요.
+          </p>
+        </div>
+
+        <div className="mx-auto mt-8 flex max-w-3xl items-center rounded-full border-2 border-[#03c75a] bg-white px-5 py-2 shadow-[0_4px_16px_rgba(3,199,90,0.18)] dark:bg-slate-900">
+          <span className="mr-3 text-2xl font-black text-[#03c75a]">N</span>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="검색어를 입력하세요"
+            className="min-w-0 flex-1 border-0 bg-transparent px-2 py-4 text-lg font-semibold text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
           />
-          <p className="mt-5 text-sm font-black uppercase text-[#03c75a] tracking-normal">
-            Smart Gachon Risk Search
-          </p>
-          <h2 className="section-title mt-2 text-4xl leading-tight sm:text-5xl lg:text-6xl">
-            RED FLAG
-          </h2>
-          <p className="muted-copy mx-auto mt-4 max-w-2xl text-base leading-7 sm:text-lg">
-            기업명이나 키워드를 검색하면 최신 뉴스와 위험 신호를 한 번에 확인할 수 있습니다.
-          </p>
+          <button
+            onClick={handleSearch}
+            disabled={isLoading}
+            className="h-11 rounded-full bg-[#03c75a] px-7 text-sm font-black text-white transition hover:bg-[#02b350] disabled:opacity-50"
+          >
+            {isLoading ? '검색 중' : '검색'}
+          </button>
+        </div>
 
-          <div className="mx-auto mt-8 grid max-w-3xl gap-2 rounded-2xl border-2 border-[#03c75a] bg-white p-2 shadow-lg shadow-lime-200/70 dark:border-emerald-400 dark:bg-slate-900 sm:grid-cols-[1fr_auto]">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="삼성전자, SK하이닉스, AI 반도체"
-              className="border-0 bg-transparent px-4 py-4 text-base font-semibold text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
-            />
+        <div className="mx-auto mt-6 grid max-w-3xl grid-cols-4 gap-3 text-center text-sm font-bold sm:grid-cols-8">
+          {['삼성전자', 'SK하이닉스', 'AI', '반도체', '실적', '증시', '규제', '소송'].map((keyword) => (
             <button
-              onClick={handleSearch}
-              disabled={isLoading}
-              className="primary-button rounded-xl px-8 py-4 text-sm font-black"
+              key={keyword}
+              onClick={() => setSearchTerm(keyword)}
+              className="group flex flex-col items-center gap-2 text-slate-600 transition hover:text-[#03c75a]"
             >
-              {isLoading ? '검색 중' : '뉴스 검색'}
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-lime-200 bg-[#f5fff1] text-base font-black text-[#03c75a] transition group-hover:border-[#03c75a] group-hover:bg-white">
+                {keyword.slice(0, 1)}
+              </span>
+              <span className="text-xs">{keyword}</span>
             </button>
-          </div>
+          ))}
+        </div>
 
-          <div className="mx-auto mt-5 flex max-w-3xl flex-wrap justify-center gap-2 text-sm font-bold">
-            {['삼성전자', 'AI 주식', '반도체', '실적 전망'].map((keyword) => (
-              <button
-                key={keyword}
-                onClick={() => setSearchTerm(keyword)}
-                className="rounded-full border border-lime-200 bg-white px-4 py-2 text-emerald-700 transition hover:border-[#03c75a] hover:bg-lime-50 dark:border-slate-700 dark:bg-slate-900 dark:text-emerald-300"
-              >
-                {keyword}
-              </button>
-            ))}
+        <div className="mx-auto mt-8 grid max-w-3xl grid-cols-3 overflow-hidden rounded-2xl border border-slate-200 bg-white text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="border-r border-slate-100 p-4 dark:border-slate-800">
+            <p className="text-2xl font-black text-[#03c75a]">{newsList.length}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">수집 뉴스</p>
           </div>
-
-          <div className="mx-auto mt-8 grid max-w-3xl grid-cols-3 gap-3 text-center">
-            <div className="rounded-xl border border-lime-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300">{newsList.length}</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">수집 뉴스</p>
-            </div>
-            <div className="rounded-xl border border-lime-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-              <p className="text-2xl font-black text-red-600">{highRiskCount}</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">High Risk</p>
-            </div>
-            <div className="rounded-xl border border-lime-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-              <p className="text-2xl font-black text-[#03c75a]">{maxScore}</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">최고 점수</p>
-            </div>
+          <div className="border-r border-slate-100 p-4 dark:border-slate-800">
+            <p className="text-2xl font-black text-red-600">{highRiskCount}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">High Risk</p>
+          </div>
+          <div className="p-4">
+            <p className="text-2xl font-black text-[#03c75a]">{maxScore}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">최고 점수</p>
           </div>
         </div>
       </section>
@@ -211,10 +206,11 @@ function Home() {
         </div>
       )}
 
-      <section className="mt-10">
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <section className="mt-10 grid gap-5 lg:grid-cols-[1fr_320px]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h3 className="section-title text-2xl">오늘의 리스크 뉴스</h3>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white">뉴스</h3>
             <p className="muted-copy mt-1 text-sm">뉴스를 선택하면 AI 위험 분석을 시작합니다.</p>
           </div>
           {newsList.length > 0 && (
@@ -242,9 +238,9 @@ function Home() {
               <span className="text-xs font-semibold text-slate-400">총 {newsList.length}건</span>
             </div>
           )}
-        </div>
+          </div>
 
-        <div className="space-y-3">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {sortedNewsWithIndex.map(({ item, originalIndex }) => {
             const result = analysisResults[originalIndex];
             const analyzing = isAnalyzing === originalIndex;
@@ -254,16 +250,16 @@ function Home() {
               <div
                 key={item.link || `news-${originalIndex}`}
                 onClick={() => handleAnalyze(item, originalIndex)}
-              className={`cursor-pointer rounded-xl border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-lime-100 dark:bg-slate-900 ${
+                className={`cursor-pointer bg-white py-5 transition dark:bg-slate-900 ${
                   result
-                    ? getRiskBorderColor(result.risk_level)
-                    : 'border-lime-100 dark:border-slate-800 hover:border-[#03c75a]'
+                    ? 'border-l-4 pl-4 ' + getRiskBorderColor(result.risk_level)
+                    : 'hover:bg-[#fbfff9]'
                 }`}
               >
                 <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="rounded-md bg-lime-50 px-2 py-1 text-xs font-black uppercase text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                      News {originalIndex + 1}
+                      뉴스 {originalIndex + 1}
                     </span>
                     {item.pubDate && (
                       <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
@@ -326,13 +322,41 @@ function Home() {
               </div>
             );
           })}
+          </div>
+
+          {!isLoading && newsList.length === 0 && (
+            <div className="rounded-xl border border-dashed border-lime-300 bg-white/80 py-16 text-center dark:border-slate-700 dark:bg-slate-900/70">
+              <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">기업명을 입력하고 최신 뉴스를 확인하세요.</p>
+            </div>
+          )}
         </div>
 
-        {!isLoading && newsList.length === 0 && (
-          <div className="rounded-xl border border-dashed border-lime-300 bg-white/80 py-16 text-center dark:border-slate-700 dark:bg-slate-900/70">
-            <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">기업명을 입력하고 최신 뉴스를 확인하세요.</p>
+        <aside className="space-y-5">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h3 className="text-base font-black text-slate-900 dark:text-white">실시간 인기 검색</h3>
+            <div className="mt-4 space-y-3">
+              {['삼성전자', '반도체 실적', 'AI 주식', '코스피 전망', '규제 리스크'].map((keyword, index) => (
+                <button
+                  key={keyword}
+                  onClick={() => setSearchTerm(keyword)}
+                  className="flex w-full items-center gap-3 text-left text-sm font-bold text-slate-700 transition hover:text-[#03c75a] dark:text-slate-300"
+                >
+                  <span className="w-5 text-center text-[#03c75a]">{index + 1}</span>
+                  {keyword}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
+
+          <div className="rounded-2xl border border-lime-200 bg-[#f8fff4] p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h3 className="text-base font-black text-slate-900 dark:text-white">분석 흐름</h3>
+            <div className="mt-4 space-y-3 text-sm font-semibold text-slate-600 dark:text-slate-300">
+              <p>1. 기업 뉴스 검색</p>
+              <p>2. 뉴스 클릭 후 위험 점수 산출</p>
+              <p>3. 상세 리포트에서 판단 근거 확인</p>
+            </div>
+          </div>
+        </aside>
       </section>
     </div>
   );

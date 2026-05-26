@@ -68,7 +68,7 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-[#f7fff3] transition-colors duration-300 dark:bg-slate-900">
+      <div className="min-h-screen bg-white transition-colors duration-300 dark:bg-slate-900">
         {/* 네비게이션 — 로그인 상태일 때만 표시 */}
         {user && (
           <nav className="sticky top-0 z-40 border-b border-lime-200/80 bg-white/90 text-slate-900 shadow-sm backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/82 dark:text-white">
