@@ -158,6 +158,7 @@ class CommentOut(BaseModel):
 class PostOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    user_id: Optional[int] = None  # 클라이언트가 작성자 본인 여부 판단용
     title: str
     content: str
     ticker: Optional[str] = None
@@ -170,6 +171,7 @@ class PostOut(BaseModel):
     def from_orm_with_relations(cls, post):
         return cls(
             id=post.id,
+            user_id=post.user_id,
             title=post.title,
             content=post.content,
             ticker=post.ticker,
@@ -183,6 +185,13 @@ class PostOut(BaseModel):
 class PostCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     content: str = Field(min_length=1, max_length=5000)
+    ticker: Optional[str] = Field(default=None, max_length=20)
+
+
+class PostUpdate(BaseModel):
+    # 모두 선택 — 입력된 필드만 갱신. 빈 페이로드는 라우터에서 차단.
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    content: Optional[str] = Field(default=None, min_length=1, max_length=5000)
     ticker: Optional[str] = Field(default=None, max_length=20)
 
 

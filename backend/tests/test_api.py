@@ -107,3 +107,111 @@ def test_report_generation(client):
     body = report.json()
     assert body["result_id"] == result_id
     assert "summary" in body and "recommendation" in body
+
+
+# ── Community: edit / delete by author only ─────────────────────────────────
+
+def _signup(client, email, name):
+    res = client.post(
+        "/auth/signup",
+        json={"email": email, "password": VALID_PASSWORD, "name": name},
+    )
+    assert res.status_code == 200, res.text
+    return res.json()["access_token"]
+
+
+def _create_post(client, token, title="원본 제목", content="원본 본문"):
+    res = client.post(
+        "/community/posts",
+        json={"title": title, "content": content, "ticker": "TST"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 201, res.text
+    return res.json()
+
+
+def test_author_can_update_own_post(client):
+    token = _signup(client, "author@test.com", "Author")
+    post = _create_post(client, token)
+    res = client.patch(
+        f"/community/posts/{post['id']}",
+        json={"title": "수정된 제목", "content": "수정된 본문"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["title"] == "수정된 제목"
+    assert body["content"] == "수정된 본문"
+    # 빠뜨린 ticker 는 유지
+    assert body["ticker"] == "TST"
+
+
+def test_other_user_cannot_update_post(client):
+    author_token = _signup(client, "owner@test.com", "Owner")
+    post = _create_post(client, author_token)
+
+    intruder_token = _signup(client, "intruder@test.com", "Intruder")
+    res = client.patch(
+        f"/community/posts/{post['id']}",
+        json={"title": "탈취 시도"},
+        headers={"Authorization": f"Bearer {intruder_token}"},
+    )
+    assert res.status_code == 403
+
+
+def test_anonymous_cannot_update_post(client):
+    author_token = _signup(client, "owner2@test.com", "Owner2")
+    post = _create_post(client, author_token)
+
+    res = client.patch(
+        f"/community/posts/{post['id']}",
+        json={"title": "익명 시도"},
+    )
+    assert res.status_code == 401
+
+
+def test_empty_payload_rejected(client):
+    token = _signup(client, "owner3@test.com", "Owner3")
+    post = _create_post(client, token)
+    res = client.patch(
+        f"/community/posts/{post['id']}",
+        json={},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 400
+
+
+def test_author_can_delete_own_post(client):
+    token = _signup(client, "deleter@test.com", "Deleter")
+    post = _create_post(client, token)
+
+    res = client.delete(
+        f"/community/posts/{post['id']}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 204
+
+    # 목록에서 사라짐
+    listing = client.get("/community/posts").json()
+    assert all(p["id"] != post["id"] for p in listing)
+
+
+def test_other_user_cannot_delete_post(client):
+    author_token = _signup(client, "ownerX@test.com", "OwnerX")
+    post = _create_post(client, author_token)
+
+    intruder_token = _signup(client, "intruderX@test.com", "IntruderX")
+    res = client.delete(
+        f"/community/posts/{post['id']}",
+        headers={"Authorization": f"Bearer {intruder_token}"},
+    )
+    assert res.status_code == 403
+
+
+def test_delete_missing_post_returns_404(client):
+    token = _signup(client, "ghost@test.com", "Ghost")
+    res = client.delete(
+        "/community/posts/999999",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 404

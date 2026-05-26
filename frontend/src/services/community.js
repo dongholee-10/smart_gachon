@@ -73,5 +73,7 @@ export const mockLikePost = async (postId) => {
 // ─────────────────────────────────────────────
 export const getPosts = () => api.get('/community/posts').then((r) => r.data);
 export const createPost = (data) => api.post('/community/posts', data).then((r) => r.data);
+export const updatePost = (postId, data) => api.patch(`/community/posts/${postId}`, data).then((r) => r.data);
+export const deletePost = (postId) => api.delete(`/community/posts/${postId}`).then(() => true);
 export const addComment = (postId, data) => api.post(`/community/posts/${postId}/comments`, data).then((r) => r.data);
 export const likePost = (postId) => api.post(`/community/posts/${postId}/like`).then((r) => r.data);

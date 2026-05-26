@@ -67,6 +67,43 @@ def create_post(db: Session, user_id: int, title: str, content: str, ticker: Opt
     return get_post(db, post.id)
 
 
+def update_post(
+    db: Session,
+    post_id: int,
+    user_id: int,
+    *,
+    title: Optional[str] = None,
+    content: Optional[str] = None,
+    ticker: Optional[str] = None,
+) -> Optional[Post]:
+    """입력된 필드만 갱신. 작성자가 아니면 None 반환 (라우터에서 403 처리)."""
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if post is None:
+        return None
+    if post.user_id != user_id:
+        return None
+    if title is not None:
+        post.title = title
+    if content is not None:
+        post.content = content
+    if ticker is not None:
+        post.ticker = ticker or None
+    db.commit()
+    return get_post(db, post_id)
+
+
+def delete_post(db: Session, post_id: int, user_id: int) -> str:
+    """반환: 'deleted' | 'not_found' | 'forbidden' — 라우터가 적절한 상태 코드 매핑."""
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if post is None:
+        return "not_found"
+    if post.user_id != user_id:
+        return "forbidden"
+    db.delete(post)
+    db.commit()
+    return "deleted"
+
+
 def like_post(db: Session, post_id: int) -> Optional[Post]:
     post = db.query(Post).filter(Post.id == post_id).first()
     if post:
