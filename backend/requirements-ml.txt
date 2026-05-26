@@ -1,0 +1,8 @@
+# 선택적 ML 의존성 — FinBERT (KR/EN) 실추론을 켤 때만 필요.
+# 호스트에서 실험하려면:
+#   pip install -r requirements.txt -r requirements-ml.txt
+#   .env 에 ENABLE_FINBERT=true
+# Docker 이미지에는 포함하지 않는다 (torch wheel 이 1GB+ 라 빌드 시 OOM).
+
+torch>=2.0.0
+transformers>=4.30.0

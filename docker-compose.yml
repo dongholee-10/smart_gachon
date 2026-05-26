@@ -1,11 +1,14 @@
-# 시연·개발용 PostgreSQL 서비스.
-# 백엔드(uvicorn)와 프론트(vite)는 로컬에서 직접 돌리고, DB만 컨테이너로 띄운다.
+# 풀스택 시연용. PG / 백엔드(FastAPI) / 프론트(nginx + vite build) 를 한 번에.
 #
 # 사용:
-#   docker compose up -d db          # PG 백그라운드 기동
-#   docker compose logs -f db        # 로그 확인
-#   docker compose down              # 컨테이너 중지 (volume 보존)
-#   docker compose down -v           # volume까지 삭제 (데이터 전부 날아감)
+#   docker compose up -d              # 전체 기동 (첫 빌드 5~10분, 이후 캐시)
+#   docker compose logs -f backend    # 로그 보기
+#   docker compose ps                 # 헬스 확인
+#   docker compose down               # 컨테이너 중지 (volume 보존)
+#   docker compose down -v            # volume 까지 삭제 → DB 초기화
+#
+# 필수: backend/.env 에 NAVER_CLIENT_ID/SECRET, JWT_SECRET 채워져 있어야 함.
+# DATABASE_URL 은 여기서 컨테이너 네트워크용으로 override 하므로 .env 값과 달라도 OK.
 
 services:
   db:
@@ -16,7 +19,6 @@ services:
       POSTGRES_USER: redflag
       POSTGRES_PASSWORD: redflag
       POSTGRES_DB: redflag
-      # SQL 명령에 한국어가 섞여도 깨지지 않도록 UTF-8 강제
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
     ports:
@@ -28,6 +30,36 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: redflag-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # 컨테이너 네트워크에선 호스트명이 'db' — .env 의 localhost 값을 override.
+      DATABASE_URL: postgresql+psycopg2://redflag:redflag@db:5432/redflag
+      # 브라우저는 호스트의 localhost:5173 으로 들어오므로 그 origin 만 허용하면 됨.
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    # production-like: --reload 없음. 코드 변경하려면 다시 build.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: redflag-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
