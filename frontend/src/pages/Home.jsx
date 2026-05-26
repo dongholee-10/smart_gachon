@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { analyzeNews, searchNews, fetchLatestNews } from '../services/api';
 import { fetchTrendingStocks } from '../services/stocks';
+import { getWatchlist } from '../services/watchlist';
 import AnimatedRiskGauge from '../components/AnimatedRiskGauge';
 
 // 백엔드 /stocks/trending 응답이 빌 때 (네이버 API 미연결 등) 보여줄 안전한 fallback.
@@ -49,19 +50,57 @@ function Home() {
   const [trending, setTrending] = useState([]);
   const navigate = useNavigate();
 
+  // 사용자가 관심종목을 설정해뒀으면 그 종목들의 뉴스를 우선 노출.
+  // 비어 있거나 토큰 없으면 일반 최신 뉴스 fallback.
+  const [newsSource, setNewsSource] = useState('latest'); // 'watchlist' | 'latest'
+  const [watchlistTickerNames, setWatchlistTickerNames] = useState([]);
+
   useEffect(() => {
-    const loadLatestNews = async () => {
+    let cancelled = false;
+    const loadInitialNews = async () => {
       setIsLoading(true);
       try {
-        const news = await fetchLatestNews(5);
-        setNewsList(news);
+        const watchlist = await getWatchlist().catch(() => []);
+        const names = Array.isArray(watchlist) ? watchlist.map((w) => w.name).filter(Boolean) : [];
+        if (cancelled) return;
+
+        if (names.length > 0) {
+          // 종목별로 병렬 검색 후 합쳐서 pubDate 내림차순 정렬, 중복 제거
+          setWatchlistTickerNames(names);
+          setNewsSource('watchlist');
+          const results = await Promise.allSettled(names.slice(0, 5).map((n) => searchNews(n, 4)));
+          const merged = [];
+          const seen = new Set();
+          for (const r of results) {
+            if (r.status !== 'fulfilled') continue;
+            for (const item of r.value) {
+              if (!item.link || seen.has(item.link)) continue;
+              seen.add(item.link);
+              merged.push(item);
+            }
+          }
+          merged.sort((a, b) => toTimestamp(b.pubDate) - toTimestamp(a.pubDate));
+          if (!cancelled) setNewsList(merged.slice(0, 10));
+        } else {
+          // watchlist 없거나 로그인 안 됨 → 기존 최신 뉴스
+          setNewsSource('latest');
+          const news = await fetchLatestNews(5);
+          if (!cancelled) setNewsList(news);
+        }
       } catch (error) {
-        console.error('최신 뉴스 로드 실패:', error);
+        console.error('첫 화면 뉴스 로드 실패:', error);
+        if (!cancelled) {
+          try {
+            const news = await fetchLatestNews(5);
+            if (!cancelled) setNewsList(news);
+          } catch (_) {}
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
-    loadLatestNews();
+    loadInitialNews();
+    return () => { cancelled = true; };
   }, []);
 
   // 핫 종목 — 네이버 검색 결과 많은 순. 첫 호출이 5~10초 걸릴 수 있어 useEffect 분리.
@@ -217,7 +256,15 @@ function Home() {
           ))}
         </div>
 
-        <div className="mx-auto mt-7 flex max-w-3xl flex-wrap justify-center gap-3 text-sm font-bold text-slate-500">
+        {newsSource === 'watchlist' && watchlistTickerNames.length > 0 && !searchTerm && (
+          <div className="mx-auto mt-7 inline-flex max-w-3xl items-center gap-2 rounded-full border border-lime-200 bg-lime-50 px-4 py-2 text-xs font-bold text-emerald-700">
+            <span>관심종목 뉴스 표시 중</span>
+            <span className="text-emerald-500">·</span>
+            <span className="font-semibold">{watchlistTickerNames.slice(0, 5).join(', ')}</span>
+          </div>
+        )}
+
+        <div className="mx-auto mt-5 flex max-w-3xl flex-wrap justify-center gap-3 text-sm font-bold text-slate-500">
           <span>뉴스 {newsList.length}건</span>
           <span className="text-slate-300">|</span>
           <span>High Risk {highRiskCount}건</span>

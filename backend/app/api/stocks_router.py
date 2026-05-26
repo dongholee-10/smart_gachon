@@ -1,10 +1,10 @@
 from typing import List
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from app.data import stocks as stock_data
-from app.services import trending_service
+from app.services import quote_service, trending_service
 
 router = APIRouter(prefix="/stocks", tags=["Stocks"])
 
@@ -17,6 +17,18 @@ class StockOut(BaseModel):
 
 class TrendingStockOut(StockOut):
     article_count: int
+
+
+class QuoteOut(BaseModel):
+    ticker: str
+    name: str
+    price: int
+    change: int
+    change_pct: float
+    direction: str  # "up" | "down" | "flat"
+    currency: str
+    source: str
+    fetched_at: str
 
 
 @router.get("/search", response_model=List[StockOut])
@@ -32,3 +44,12 @@ def search_stocks(
 def trending_stocks(limit: int = Query(8, ge=1, le=20)):
     """네이버 뉴스 검색 결과가 많은 순으로 핫 종목 반환. 메모리 5분 캐시."""
     return trending_service.get_trending(limit=limit)
+
+
+@router.get("/quote/{ticker}", response_model=QuoteOut)
+def stock_quote(ticker: str):
+    """실시간 시세 (네이버 모바일 금융, 30초 캐시)."""
+    quote = quote_service.get_quote(ticker)
+    if quote is None:
+        raise HTTPException(status_code=404, detail="시세 정보를 가져올 수 없습니다.")
+    return quote
