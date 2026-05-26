@@ -6,7 +6,13 @@ import {
   getWatchlist, addWatchlist, deleteWatchlist, updateMemo,
 } from '../services/watchlist';
 import { analyzeNews } from '../services/api';
+import { fetchStockQuote } from '../services/stocks';
 import StockAutocomplete from '../components/StockAutocomplete';
+
+const formatPrice = (n) => {
+  if (n === null || n === undefined) return '—';
+  return Number(n).toLocaleString('ko-KR');
+};
 
 const formatDate = (iso) => {
   try {
@@ -23,6 +29,8 @@ function Watchlist() {
   const [memo, setMemo] = useState('');
   const [editMemo, setEditMemo] = useState({}); // id -> memo 편집 상태
   const [analyzingId, setAnalyzingId] = useState(null);
+  const [quotes, setQuotes] = useState({}); // ticker -> quote
+  const [quoteRefreshTs, setQuoteRefreshTs] = useState(0);
 
   useEffect(() => {
     const fetchList = async () => {
@@ -39,6 +47,32 @@ function Watchlist() {
 
     fetchList();
   }, []);
+
+  // 리스트가 바뀔 때마다 새 ticker 만 시세 조회. quoteRefreshTs 가 바뀌면 전부 다시.
+  useEffect(() => {
+    if (list.length === 0) return;
+    let cancelled = false;
+    list.forEach((item) => {
+      if (!item.ticker) return;
+      if (quotes[item.ticker] && quoteRefreshTs === 0) return; // 이미 받았고 강제 갱신도 아님
+      fetchStockQuote(item.ticker)
+        .then((q) => {
+          if (cancelled) return;
+          setQuotes((prev) => ({ ...prev, [item.ticker]: q }));
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setQuotes((prev) => ({ ...prev, [item.ticker]: null }));
+        });
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, quoteRefreshTs]);
+
+  const handleRefreshQuotes = () => {
+    setQuotes({});
+    setQuoteRefreshTs(Date.now());
+  };
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -110,12 +144,23 @@ function Watchlist() {
             관심 있는 종목을 등록하고 빠르게 리스크를 분석하세요.
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="rounded-xl bg-[#03c75a] px-6 py-3 text-sm font-black text-white transition hover:bg-[#02b350]"
-        >
-          {showForm ? '취소' : '종목 추가'}
-        </button>
+        <div className="flex gap-2">
+          {list.length > 0 && (
+            <button
+              onClick={handleRefreshQuotes}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 transition hover:border-[#03c75a] hover:text-[#03c75a]"
+              title="실시간 시세 새로고침"
+            >
+              시세 새로고침
+            </button>
+          )}
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="rounded-xl bg-[#03c75a] px-6 py-3 text-sm font-black text-white transition hover:bg-[#02b350]"
+          >
+            {showForm ? '취소' : '종목 추가'}
+          </button>
+        </div>
       </div>
 
       {useMockWatchlist && (
@@ -170,76 +215,94 @@ function Watchlist() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          {list.map((item) => (
-            <div
-              key={item.id}
-              className="border-b border-slate-100 p-5 last:border-b-0"
-            >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xl font-black text-slate-900">{item.name}</span>
+          {list.map((item) => {
+            const q = quotes[item.ticker];
+            const dirColor = q?.direction === 'up' ? 'text-red-600' : q?.direction === 'down' ? 'text-blue-600' : 'text-slate-500';
+            const dirArrow = q?.direction === 'up' ? '▲' : q?.direction === 'down' ? '▼' : '–';
+            return (
+              <div key={item.id} className="border-b border-slate-100 p-5 last:border-b-0">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-baseline gap-3">
+                      <span className="text-xl font-black text-slate-900">{item.name}</span>
+                      {q === undefined && (
+                        <span className="text-xs font-bold text-slate-300">시세 불러오는 중…</span>
+                      )}
+                      {q === null && (
+                        <span className="text-xs font-bold text-slate-400">시세 정보 없음</span>
+                      )}
+                      {q && (
+                        <>
+                          <span className="text-lg font-black text-slate-900 tabular-nums">
+                            {formatPrice(q.price)}원
+                          </span>
+                          <span className={`text-sm font-bold ${dirColor} tabular-nums`}>
+                            {dirArrow} {formatPrice(Math.abs(q.change))} ({q.change_pct > 0 ? '+' : ''}{q.change_pct.toFixed(2)}%)
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                      <span>추가일 {formatDate(item.addedAt)}</span>
+                      <button
+                        onClick={() => setEditMemo((prev) => ({ ...prev, [item.id]: item.memo }))}
+                        className="font-bold text-[#03c75a] hover:text-[#02a84b]"
+                      >
+                        메모 수정
+                      </button>
+                    </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                    <span>추가일 {formatDate(item.addedAt)}</span>
+
+                  {/* 버튼 */}
+                  <div className="flex shrink-0 items-center gap-2">
                     <button
-                      onClick={() => setEditMemo((prev) => ({ ...prev, [item.id]: item.memo }))}
-                      className="font-bold text-[#03c75a] hover:text-[#02a84b]"
+                      onClick={() => handleAnalyze(item)}
+                      disabled={analyzingId === item.id}
+                      className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700 transition hover:border-[#03c75a] hover:bg-lime-50 disabled:opacity-50"
                     >
-                      메모 수정
+                      {analyzingId === item.id ? '분석 중' : '리스크 분석'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="rounded-xl px-3 py-2 text-sm font-bold text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
+                    >
+                      삭제
                     </button>
                   </div>
                 </div>
 
-                {/* 버튼 */}
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    onClick={() => handleAnalyze(item)}
-                    disabled={analyzingId === item.id}
-                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700 transition hover:border-[#03c75a] hover:bg-lime-50 disabled:opacity-50"
-                  >
-                    {analyzingId === item.id ? '분석 중' : '리스크 분석'}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="rounded-xl px-3 py-2 text-sm font-bold text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
-                  >
-                    삭제
-                  </button>
+                {/* 메모 */}
+                <div className="mt-4">
+                  {editMemo[item.id] !== undefined ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editMemo[item.id]}
+                        onChange={(e) => setEditMemo((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                        className="field-input flex-1 rounded-lg p-2 text-sm"
+                      />
+                      <button
+                        onClick={() => handleSaveMemo(item.id)}
+                        className="rounded-lg bg-[#03c75a] px-4 py-2 text-sm font-bold text-white"
+                      >
+                        저장
+                      </button>
+                      <button
+                        onClick={() => setEditMemo((prev) => { const n = { ...prev }; delete n[item.id]; return n; })}
+                        className="rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-slate-100"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-6 text-slate-600">
+                      {item.memo || '메모 없음'}
+                    </p>
+                  )}
                 </div>
               </div>
-
-              {/* 메모 */}
-              <div className="mt-4">
-                {editMemo[item.id] !== undefined ? (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={editMemo[item.id]}
-                      onChange={(e) => setEditMemo((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                      className="field-input flex-1 rounded-lg p-2 text-sm"
-                    />
-                    <button
-                      onClick={() => handleSaveMemo(item.id)}
-                      className="rounded-lg bg-[#03c75a] px-4 py-2 text-sm font-bold text-white"
-                    >
-                      저장
-                    </button>
-                    <button
-                      onClick={() => setEditMemo((prev) => { const n = { ...prev }; delete n[item.id]; return n; })}
-                      className="rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-slate-100"
-                    >
-                      취소
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-sm leading-6 text-slate-600">
-                    {item.memo || '메모 없음'}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

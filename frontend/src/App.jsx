@@ -48,7 +48,6 @@ function App() {
 
               <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
                 <Link to="/" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-lime-50 hover:text-emerald-700">Dashboard</Link>
-                <Link to="/analysis" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-lime-50 hover:text-emerald-700">Risk Analysis</Link>
                 <Link to="/watchlist" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-lime-50 hover:text-emerald-700">관심종목</Link>
                 <Link to="/community" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-lime-50 hover:text-emerald-700">커뮤니티</Link>
 
