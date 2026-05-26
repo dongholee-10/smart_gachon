@@ -15,6 +15,7 @@ from app.api.auth_router import router as auth_router
 from app.api.community_router import router as community_router
 from app.api.news_router import router as news_router
 from app.api.report_router import router as report_router
+from app.api.stocks_router import router as stocks_router
 from app.api.watchlist_router import router as watchlist_router
 from app.core.config import settings
 from app.database.session import init_db
@@ -51,6 +52,7 @@ app.include_router(news_router)
 app.include_router(report_router)
 app.include_router(community_router)
 app.include_router(watchlist_router)
+app.include_router(stocks_router)
 
 
 @app.get("/")
