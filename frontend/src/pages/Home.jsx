@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { analyzeNews, searchNews, fetchLatestNews } from '../services/api';
+import { fetchTrendingStocks } from '../services/stocks';
 
-const QUICK_KEYWORDS = ['삼성전자', 'SK하이닉스', 'AI', '반도체', '실적', '증시', '규제', '소송'];
-const POPULAR_KEYWORDS = ['삼성전자', '반도체 실적', 'AI 주식', '코스피 전망', '규제 리스크'];
+// 백엔드 /stocks/trending 응답이 빌 때 (네이버 API 미연결 등) 보여줄 안전한 fallback.
+// 평소엔 실시간 핫 종목으로 자동 교체된다.
+const FALLBACK_TRENDING = [
+  { name: '삼성전자', ticker: '005930', market: 'KOSPI', article_count: 0 },
+  { name: 'SK하이닉스', ticker: '000660', market: 'KOSPI', article_count: 0 },
+  { name: '카카오', ticker: '035720', market: 'KOSPI', article_count: 0 },
+  { name: 'NAVER', ticker: '035420', market: 'KOSPI', article_count: 0 },
+  { name: 'LG에너지솔루션', ticker: '373220', market: 'KOSPI', article_count: 0 },
+];
 
 const formatDate = (pubDate) => {
   if (!pubDate) return '';
@@ -37,6 +45,7 @@ function Home() {
   const [newsList, setNewsList] = useState([]);
   const [analysisResults, setAnalysisResults] = useState({});
   const [sortOrder, setSortOrder] = useState('latest');
+  const [trending, setTrending] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,6 +61,21 @@ function Home() {
       }
     };
     loadLatestNews();
+  }, []);
+
+  // 핫 종목 — 네이버 검색 결과 많은 순. 첫 호출이 5~10초 걸릴 수 있어 useEffect 분리.
+  useEffect(() => {
+    let cancelled = false;
+    fetchTrendingStocks(8)
+      .then((list) => {
+        if (cancelled) return;
+        setTrending(list.length > 0 ? list : FALLBACK_TRENDING);
+      })
+      .catch((e) => {
+        console.error('trending 로드 실패:', e);
+        if (!cancelled) setTrending(FALLBACK_TRENDING);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const runSearch = async (term) => {
@@ -172,18 +196,22 @@ function Home() {
           </button>
         </div>
 
-        <div className="mx-auto mt-6 grid max-w-3xl grid-cols-4 gap-3 text-center text-sm font-bold sm:grid-cols-8">
-          {QUICK_KEYWORDS.map((keyword) => (
+        <div className="mx-auto mt-4 max-w-3xl text-xs font-bold uppercase tracking-widest text-slate-400">
+          핫 종목 · 네이버 뉴스 기사 많은 순
+        </div>
+        <div className="mx-auto mt-2 grid max-w-3xl grid-cols-4 gap-3 text-center text-sm font-bold sm:grid-cols-8">
+          {(trending.length > 0 ? trending : FALLBACK_TRENDING).map((stock) => (
             <button
-              key={keyword}
-              onClick={() => runSearch(keyword)}
+              key={stock.ticker}
+              onClick={() => runSearch(stock.name)}
               disabled={isLoading}
               className="group flex flex-col items-center gap-2 text-slate-600 transition hover:text-[#03c75a]"
+              title={stock.article_count > 0 ? `기사 ${stock.article_count.toLocaleString()}건` : ''}
             >
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-lime-200 bg-[#f5fff1] text-base font-black text-[#03c75a] transition group-hover:border-[#03c75a] group-hover:bg-white">
-                {keyword.slice(0, 1)}
+                {stock.name.slice(0, 1)}
               </span>
-              <span className="text-xs">{keyword}</span>
+              <span className="text-xs">{stock.name}</span>
             </button>
           ))}
         </div>
@@ -324,17 +352,25 @@ function Home() {
 
         <aside className="space-y-5">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-base font-black text-slate-900">인기 검색</h3>
+            <h3 className="text-base font-black text-slate-900">실시간 핫 종목</h3>
+            <p className="mt-1 text-xs font-semibold text-slate-400">네이버 뉴스 기사 많은 순</p>
             <div className="mt-4 space-y-3">
-              {POPULAR_KEYWORDS.map((keyword, index) => (
+              {(trending.length > 0 ? trending : FALLBACK_TRENDING).slice(0, 5).map((stock, index) => (
                 <button
-                  key={keyword}
-                  onClick={() => runSearch(keyword)}
+                  key={stock.ticker}
+                  onClick={() => runSearch(stock.name)}
                   disabled={isLoading}
-                  className="flex w-full items-center gap-3 text-left text-sm font-bold text-slate-700 transition hover:text-[#03c75a]"
+                  className="flex w-full items-center justify-between gap-3 text-left text-sm font-bold text-slate-700 transition hover:text-[#03c75a]"
                 >
-                  <span className="w-5 text-center text-[#03c75a]">{index + 1}</span>
-                  {keyword}
+                  <span className="flex items-center gap-3">
+                    <span className="w-5 text-center text-[#03c75a]">{index + 1}</span>
+                    {stock.name}
+                  </span>
+                  {stock.article_count > 0 && (
+                    <span className="text-xs font-semibold text-slate-400">
+                      {stock.article_count.toLocaleString()}건
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
