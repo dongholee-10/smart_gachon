@@ -172,9 +172,15 @@ cd frontend && npm install && npm run dev  # 5173
 
 `.env` 의 `DATABASE_URL` 을 `localhost:5432` 로 두면 됨 (.env.example 기본값).
 
-### FinBERT 실추론을 켜고 싶다면
+### FinBERT 실추론
 
-기본 docker 이미지는 torch / transformers 가 빠져 있다 (이미지 크기·메모리 절약 — 룰 기반 fallback 으로 동작). 진짜 KR/EN FinBERT 추론을 보고 싶으면 호스트 venv 에서:
+기본 docker 이미지에 **torch CPU wheel + transformers 가 포함**되어 있고 `ENABLE_FINBERT=true` 로 켜져 있다. 첫 분석 요청 시 HuggingFace 에서 모델을 받느라 ~30초 걸리고, 이후 호출은 메모리 캐시로 즉시 응답.
+
+- 한글 본문 → `snunlp/KR-FinBert-SC` 로딩
+- 영문 본문 → `ProsusAI/finbert` 로딩
+- 모델 로딩 실패 시 룰 기반 fallback 으로 자동 전환 (서버 안 죽음)
+
+호스트 venv 에서 돌릴 땐:
 
 ```bash
 .venv/bin/pip install -r backend/requirements-ml.txt
