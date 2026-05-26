@@ -24,6 +24,11 @@ export const searchNews = async (query, display = 10) => {
   return data.news || [];
 };
 
+export const fetchLatestNews = async (display = 5) => {
+  const { data } = await api.get('/news/latest', { params: { display } });
+  return data.news || [];
+};
+
 export const analyzeNews = async ({ title, content, text, ticker, news_link }) => {
   const { data } = await api.post('/analyze', { title, content, text, ticker, news_link });
   return data;

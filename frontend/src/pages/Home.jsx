@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { analyzeNews, searchNews } from '../services/api';
+import { analyzeNews, searchNews, fetchLatestNews } from '../services/api';
 import RiskCard from '../components/RiskCard';
 
 const formatDate = (pubDate) => {
@@ -36,6 +36,21 @@ function Home() {
   const [analysisResults, setAnalysisResults] = useState({});
   const [sortOrder, setSortOrder] = useState('latest');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadLatestNews = async () => {
+      setIsLoading(true);
+      try {
+        const news = await fetchLatestNews(5);
+        setNewsList(news);
+      } catch (error) {
+        console.error('최신 뉴스 로드 실패:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadLatestNews();
+  }, []);
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return alert('검색어를 입력해주세요!');
