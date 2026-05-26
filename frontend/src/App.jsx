@@ -4,6 +4,8 @@ import Home from './pages/Home';
 import Analysis from './pages/Analysis';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Community from './pages/Community';
+import Watchlist from './pages/Watchlist';
 import { getUser, removeToken, removeUser } from './services/auth';
 
 // 로그인 안 했으면 /login 으로 리다이렉트
@@ -75,6 +77,8 @@ function App() {
               <div className="flex items-center gap-6">
                 <Link to="/" className="hover:text-blue-400 transition">Dashboard</Link>
                 <Link to="/analysis" className="hover:text-blue-400 transition">Risk Analysis</Link>
+                <Link to="/watchlist" className="hover:text-yellow-400 transition">⭐ 관심종목</Link>
+                <Link to="/community" className="hover:text-green-400 transition">💬 커뮤니티</Link>
 
                 {/* 유저 이름 */}
                 <span className="text-sm text-slate-400">
@@ -121,6 +125,12 @@ function App() {
             } />
             <Route path="/analysis" element={
               <PrivateRoute user={user}><Analysis /></PrivateRoute>
+            } />
+            <Route path="/watchlist" element={
+              <PrivateRoute user={user}><Watchlist /></PrivateRoute>
+            } />
+            <Route path="/community" element={
+              <PrivateRoute user={user}><Community /></PrivateRoute>
             } />
           </Routes>
         </main>
