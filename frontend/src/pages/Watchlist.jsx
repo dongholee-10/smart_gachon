@@ -94,36 +94,36 @@ function Watchlist() {
   };
 
   return (
-    <div className="page-shell max-w-5xl py-10 lg:py-14">
+    <div className="page-shell max-w-5xl py-8 lg:py-10">
       {/* 헤더 */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 border-b border-slate-100 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase text-red-600 tracking-normal dark:text-red-400">Watchlist</p>
-          <h2 className="section-title mt-2 text-4xl">
+          <p className="text-xs font-black uppercase text-[#03c75a] tracking-normal">Watchlist</p>
+          <h2 className="mt-2 text-3xl font-black text-slate-900">
             관심종목
           </h2>
-          <p className="muted-copy mt-2 text-sm">
+          <p className="mt-2 text-sm font-semibold text-slate-500">
             관심 있는 종목을 등록하고 빠르게 리스크를 분석하세요.
           </p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="primary-button rounded-lg px-6 py-3 font-black"
+          className="rounded-xl bg-[#03c75a] px-6 py-3 text-sm font-black text-white transition hover:bg-[#02b350]"
         >
           {showForm ? '취소' : '종목 추가'}
         </button>
       </div>
 
       {useMockWatchlist && (
-        <span className="mb-6 inline-block rounded-md border border-yellow-200 bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700 dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-300">
-          Mock 모드 — 백엔드 /watchlist 연결 전
+        <span className="mb-5 inline-block rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+          데모 데이터 사용 중
         </span>
       )}
 
       {/* 추가 폼 */}
       {showForm && (
-        <form onSubmit={handleAdd} className="surface-panel mb-8 space-y-4 rounded-xl p-6">
-          <h3 className="font-bold text-slate-900 dark:text-white">관심종목 추가</h3>
+        <form onSubmit={handleAdd} className="mb-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="font-bold text-slate-900">관심종목 추가</h3>
           <div className="grid grid-cols-2 gap-3">
             <input
               type="text"
@@ -149,7 +149,7 @@ function Watchlist() {
           />
           <button
             type="submit"
-            className="primary-button rounded-lg px-8 py-3 font-black"
+            className="rounded-xl bg-[#03c75a] px-8 py-3 text-sm font-black text-white transition hover:bg-[#02b350]"
           >
             추가하기
           </button>
@@ -160,41 +160,47 @@ function Watchlist() {
       {isLoading ? (
         <div className="text-center py-20 text-slate-400 animate-pulse">불러오는 중...</div>
       ) : list.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 py-20 text-center dark:border-slate-700 dark:bg-slate-900/70">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-20 text-center">
           <p className="text-slate-400">관심종목을 추가해보세요!</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {list.map((item) => (
             <div
               key={item.id}
-              className="surface-panel rounded-xl p-6"
+              className="border-b border-slate-100 p-5 last:border-b-0"
             >
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xl font-black text-slate-900 dark:text-white">{item.name}</span>
-                      <span className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full font-mono">
-                        {item.ticker}
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-400">추가일: {formatDate(item.addedAt)}</span>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xl font-black text-slate-900">{item.name}</span>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold text-slate-500">
+                      {item.ticker}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                    <span>추가일 {formatDate(item.addedAt)}</span>
+                    <button
+                      onClick={() => setEditMemo((prev) => ({ ...prev, [item.id]: item.memo }))}
+                      className="font-bold text-[#03c75a] hover:text-[#02a84b]"
+                    >
+                      메모 수정
+                    </button>
                   </div>
                 </div>
 
                 {/* 버튼 */}
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   <button
                     onClick={() => handleAnalyze(item)}
                     disabled={analyzingId === item.id}
-                    className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300"
+                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700 transition hover:border-[#03c75a] hover:bg-lime-50 disabled:opacity-50"
                   >
                     {analyzingId === item.id ? '분석 중' : '리스크 분석'}
                   </button>
                   <button
                     onClick={() => handleDelete(item.id)}
-                    className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-400 transition hover:bg-slate-100 hover:text-red-500 dark:hover:bg-slate-800"
+                    className="rounded-xl px-3 py-2 text-sm font-bold text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
                   >
                     삭제
                   </button>
@@ -213,27 +219,21 @@ function Watchlist() {
                     />
                     <button
                       onClick={() => handleSaveMemo(item.id)}
-                      className="primary-button rounded-lg px-4 py-2 text-sm font-bold"
+                      className="rounded-lg bg-[#03c75a] px-4 py-2 text-sm font-bold text-white"
                     >
                       저장
                     </button>
                     <button
                       onClick={() => setEditMemo((prev) => { const n = { ...prev }; delete n[item.id]; return n; })}
-                      className="rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                      className="rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-slate-100"
                     >
                       취소
                     </button>
                   </div>
                 ) : (
-                  <div
-                    className="flex items-center gap-2 cursor-pointer group"
-                    onClick={() => setEditMemo((prev) => ({ ...prev, [item.id]: item.memo }))}
-                  >
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {item.memo || '메모 없음 - 클릭하여 추가'}
-                    </p>
-                    <span className="text-xs text-slate-300 transition group-hover:text-slate-500">Edit</span>
-                  </div>
+                  <p className="text-sm leading-6 text-slate-600">
+                    {item.memo || '메모 없음'}
+                  </p>
                 )}
               </div>
             </div>

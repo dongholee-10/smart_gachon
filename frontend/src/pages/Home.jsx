@@ -144,24 +144,24 @@ function Home() {
   return (
     <div className="page-shell py-8 lg:py-10">
       <section className="mx-auto max-w-4xl text-center">
-        <div className="pt-4">
-          <div className="mx-auto flex items-baseline justify-center">
-            <span className="text-6xl font-black leading-none text-[#03c75a] sm:text-7xl">RED</span>
-            <span className="ml-2 text-5xl font-black leading-none text-slate-900 dark:text-white sm:text-6xl">FLAG</span>
+        <div className="pt-3">
+          <div className="mx-auto flex items-baseline justify-center gap-2">
+            <span className="text-5xl font-black leading-none text-[#03c75a] sm:text-6xl">RED</span>
+            <span className="text-5xl font-black leading-none text-slate-900 sm:text-6xl">FLAG</span>
           </div>
           <p className="mt-3 text-sm font-bold text-slate-500">
             뉴스 검색부터 위험 분석까지 한 번에 확인하세요.
           </p>
         </div>
 
-        <div className="mx-auto mt-8 flex max-w-3xl items-center rounded-full border-2 border-[#03c75a] bg-white px-5 py-2 shadow-[0_4px_16px_rgba(3,199,90,0.18)] dark:bg-slate-900">
+        <div className="mx-auto mt-8 flex max-w-3xl items-center rounded-full border-2 border-[#03c75a] bg-white px-5 py-2 shadow-[0_6px_18px_rgba(3,199,90,0.12)]">
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="검색어를 입력하세요"
-            className="min-w-0 flex-1 border-0 bg-transparent px-2 py-4 text-lg font-semibold text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
+            className="min-w-0 flex-1 border-0 bg-transparent px-2 py-4 text-lg font-semibold text-slate-900 outline-none placeholder:text-slate-400"
           />
           <button
             onClick={handleSearch}
@@ -188,27 +188,20 @@ function Home() {
           ))}
         </div>
 
-        <div className="mx-auto mt-8 grid max-w-3xl grid-cols-3 overflow-hidden rounded-2xl border border-slate-200 bg-white text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="border-r border-slate-100 p-4 dark:border-slate-800">
-            <p className="text-2xl font-black text-[#03c75a]">{newsList.length}</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">수집 뉴스</p>
-          </div>
-          <div className="border-r border-slate-100 p-4 dark:border-slate-800">
-            <p className="text-2xl font-black text-red-600">{highRiskCount}</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">High Risk</p>
-          </div>
-          <div className="p-4">
-            <p className="text-2xl font-black text-[#03c75a]">{maxScore}</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">최고 점수</p>
-          </div>
+        <div className="mx-auto mt-7 flex max-w-3xl flex-wrap justify-center gap-3 text-sm font-bold text-slate-500">
+          <span>뉴스 {newsList.length}건</span>
+          <span className="text-slate-300">|</span>
+          <span>High Risk {highRiskCount}건</span>
+          <span className="text-slate-300">|</span>
+          <span>최고 점수 {maxScore}점</span>
         </div>
       </section>
 
-      <section className="mt-10 grid gap-5 lg:grid-cols-[1fr_320px]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="mt-10 grid gap-5 lg:grid-cols-[1fr_300px]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="text-xl font-black text-slate-900 dark:text-white">뉴스</h3>
+              <h3 className="text-xl font-black text-slate-900">뉴스</h3>
               <p className="muted-copy mt-1 text-sm">뉴스를 선택하면 AI 위험 분석을 시작합니다.</p>
             </div>
             {newsList.length > 0 && (
@@ -217,7 +210,7 @@ function Home() {
                   onClick={() => setSortOrder('latest')}
                   className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
                     sortOrder === 'latest'
-                      ? 'bg-[#03c75a] text-white dark:bg-emerald-400 dark:text-slate-950'
+                      ? 'bg-[#03c75a] text-white'
                       : 'secondary-button'
                   }`}
                 >
@@ -227,7 +220,7 @@ function Home() {
                   onClick={() => setSortOrder('oldest')}
                   className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
                     sortOrder === 'oldest'
-                      ? 'bg-[#03c75a] text-white dark:bg-emerald-400 dark:text-slate-950'
+                      ? 'bg-[#03c75a] text-white'
                       : 'secondary-button'
                   }`}
                 >
@@ -238,7 +231,7 @@ function Home() {
             )}
           </div>
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="divide-y divide-slate-100">
             {sortedNewsWithIndex.map(({ item, originalIndex }) => {
               const result = analysisResults[originalIndex];
               const analyzing = isAnalyzing === originalIndex;
@@ -248,7 +241,7 @@ function Home() {
                 <div
                   key={item.link || `news-${originalIndex}`}
                   onClick={() => handleAnalyze(item, originalIndex)}
-                  className={`cursor-pointer bg-white py-5 transition dark:bg-slate-900 ${
+                  className={`cursor-pointer bg-white py-5 transition ${
                     result
                       ? 'border-l-4 pl-4 ' + getRiskBorderColor(result.risk_level)
                       : 'hover:bg-[#fbfff9]'
@@ -256,11 +249,11 @@ function Home() {
                 >
                   <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="rounded-md bg-lime-50 px-2 py-1 text-xs font-black uppercase text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                      <span className="rounded-md bg-lime-50 px-2 py-1 text-xs font-black uppercase text-emerald-700">
                         뉴스 {originalIndex + 1}
                       </span>
                       {item.pubDate && (
-                        <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+                        <span className="text-xs font-semibold text-slate-400">
                           {formatDate(item.pubDate)}
                         </span>
                       )}
@@ -271,27 +264,27 @@ function Home() {
                         <span className="text-xs font-semibold text-slate-400">분석 중</span>
                       )}
                       {!result && !analyzing && (
-                        <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">클릭하여 분석</span>
+                        <span className="text-xs font-semibold text-slate-400">클릭하여 분석</span>
                       )}
                     </div>
                   </div>
 
-                  <h3 className="mb-2 text-lg font-black leading-snug text-slate-900 transition-colors hover:text-emerald-700 dark:text-white dark:hover:text-emerald-300">
+                  <h3 className="mb-2 text-lg font-black leading-snug text-slate-900 transition-colors hover:text-emerald-700">
                     {stripTags(item.title)}
                   </h3>
-                  <p className="mb-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  <p className="mb-3 text-sm leading-6 text-slate-500">
                     {stripTags(item.description)}
                   </p>
 
                   {result && (
-                    <div className="mt-4 rounded-lg border border-lime-200 bg-lime-50/70 p-4 dark:border-slate-700 dark:bg-slate-800">
+                    <div className="mt-4 rounded-lg border border-lime-200 bg-lime-50/70 p-4">
                       <div className="mb-2 flex items-center justify-between">
                         <span className="text-xs font-black uppercase text-slate-400 tracking-normal">AI 분석 결과</span>
                         <span className={`text-xl font-black ${getRiskTextColor(result.risk_level)}`}>
                           {displayScore}점
                         </span>
                       </div>
-                      <p className="mb-3 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      <p className="mb-3 line-clamp-2 text-sm leading-6 text-slate-600">
                         {result.reasoning ?? result.explanation}
                       </p>
                       <button
@@ -299,7 +292,7 @@ function Home() {
                           e.stopPropagation();
                           navigate('/analysis', { state: { result } });
                         }}
-                        className="text-xs font-black text-emerald-700 transition-colors hover:text-emerald-900 dark:text-emerald-300"
+                        className="text-xs font-black text-emerald-700 transition-colors hover:text-emerald-900"
                       >
                         상세 리포트 보기
                       </button>
@@ -311,7 +304,7 @@ function Home() {
                       href={item.link}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-sm font-bold text-emerald-600 transition-colors hover:text-emerald-800 dark:text-emerald-300"
+                    className="text-sm font-bold text-emerald-600 transition-colors hover:text-emerald-800"
                       onClick={(e) => e.stopPropagation()}
                     >
                       원문 보기
@@ -323,22 +316,22 @@ function Home() {
           </div>
 
           {!isLoading && newsList.length === 0 && (
-            <div className="rounded-xl border border-dashed border-lime-300 bg-white/80 py-16 text-center dark:border-slate-700 dark:bg-slate-900/70">
-              <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">기업명을 입력하고 최신 뉴스를 확인하세요.</p>
+            <div className="rounded-xl border border-dashed border-lime-300 bg-white py-16 text-center">
+              <p className="text-sm font-semibold text-emerald-600">기업명을 입력하고 최신 뉴스를 확인하세요.</p>
             </div>
           )}
         </div>
 
         <aside className="space-y-5">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <h3 className="text-base font-black text-slate-900 dark:text-white">실시간 인기 검색</h3>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="text-base font-black text-slate-900">인기 검색</h3>
             <div className="mt-4 space-y-3">
               {POPULAR_KEYWORDS.map((keyword, index) => (
                 <button
                   key={keyword}
                   onClick={() => runSearch(keyword)}
                   disabled={isLoading}
-                  className="flex w-full items-center gap-3 text-left text-sm font-bold text-slate-700 transition hover:text-[#03c75a] dark:text-slate-300"
+                  className="flex w-full items-center gap-3 text-left text-sm font-bold text-slate-700 transition hover:text-[#03c75a]"
                 >
                   <span className="w-5 text-center text-[#03c75a]">{index + 1}</span>
                   {keyword}
@@ -347,9 +340,9 @@ function Home() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-lime-200 bg-[#f8fff4] p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <h3 className="text-base font-black text-slate-900 dark:text-white">분석 흐름</h3>
-            <div className="mt-4 space-y-3 text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <div className="rounded-2xl border border-lime-200 bg-[#f8fff4] p-5 shadow-sm">
+            <h3 className="text-base font-black text-slate-900">분석 흐름</h3>
+            <div className="mt-4 space-y-3 text-sm font-semibold text-slate-600">
               <p>1. 기업 뉴스 검색</p>
               <p>2. 뉴스 클릭 후 위험 점수 산출</p>
               <p>3. 상세 리포트에서 판단 근거 확인</p>
