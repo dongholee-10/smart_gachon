@@ -71,24 +71,35 @@ function App() {
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
         {/* 네비게이션 — 로그인 상태일 때만 표시 */}
         {user && (
-          <nav className="bg-slate-900 dark:bg-slate-950 text-white p-4 shadow-lg">
-            <div className="max-w-7xl mx-auto flex justify-between items-center">
-              <h1 className="text-xl font-bold tracking-tight">Stock Red Flag API</h1>
-              <div className="flex items-center gap-6">
-                <Link to="/" className="hover:text-blue-400 transition">Dashboard</Link>
-                <Link to="/analysis" className="hover:text-blue-400 transition">Risk Analysis</Link>
-                <Link to="/watchlist" className="hover:text-yellow-400 transition">⭐ 관심종목</Link>
-                <Link to="/community" className="hover:text-green-400 transition">💬 커뮤니티</Link>
+          <nav className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/88 text-slate-900 shadow-sm backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/82 dark:text-white">
+            <div className="page-shell flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+              <Link to="/" className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-sm font-black text-white dark:bg-white dark:text-slate-950">
+                  RF
+                </span>
+                <div>
+                  <h1 className="text-lg font-black leading-tight tracking-normal">RED FLAG</h1>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    Stock Risk Intelligence
+                  </p>
+                </div>
+              </Link>
+
+              <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                <Link to="/" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">Dashboard</Link>
+                <Link to="/analysis" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">Risk Analysis</Link>
+                <Link to="/watchlist" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">관심종목</Link>
+                <Link to="/community" className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">커뮤니티</Link>
 
                 {/* 유저 이름 */}
-                <span className="text-sm text-slate-400">
-                  👤 {user.name || user.email}
+                <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+                  {user.name || user.email}
                 </span>
 
                 {/* 로그아웃 */}
                 <button
                   onClick={handleLogout}
-                  className="text-sm text-slate-400 hover:text-red-400 transition font-semibold"
+                  className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                 >
                   로그아웃
                 </button>
@@ -99,10 +110,10 @@ function App() {
                     localStorage.setItem('theme-manual', '1');
                     setDark(!dark);
                   }}
-                  className="w-10 h-10 rounded-full bg-slate-700 hover:bg-slate-600 transition flex items-center justify-center text-lg"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
                   title={dark ? '라이트 모드' : '다크 모드'}
                 >
-                  {dark ? '☀️' : '🌙'}
+                  {dark ? 'L' : 'D'}
                 </button>
               </div>
             </div>

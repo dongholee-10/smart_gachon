@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signupAPI, saveToken, saveUser } from '../services/auth';
+import heroImage from '../assets/hero.png';
 
 // 백엔드 정책과 동일: 8자+ / 대문자 / 소문자 / 숫자 / 특수문자.
 const PASSWORD_RULES = [
@@ -65,21 +66,31 @@ function Signup({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 px-4">
-      <div className="w-full max-w-md">
-        {/* 로고 */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter italic mb-2">
-            RED FLAG
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Stock Risk Detection System
-          </p>
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl shadow-slate-200/80 dark:border-slate-800 dark:bg-slate-950 dark:shadow-black/30 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="relative hidden bg-slate-950 p-10 text-white lg:block">
+          <img src={heroImage} alt="" className="absolute right-8 top-10 h-52 w-52 object-contain opacity-90" />
+          <div className="relative z-10 flex h-full flex-col justify-between">
+            <div>
+              <p className="text-xs font-black uppercase text-red-300 tracking-normal">RED FLAG</p>
+              <h1 className="mt-4 max-w-sm text-4xl font-black leading-tight">
+                Build a cleaner watch over market signals.
+              </h1>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center text-xs font-bold text-slate-300">
+              <span className="rounded-md border border-white/10 bg-white/5 px-3 py-3">Search</span>
+              <span className="rounded-md border border-white/10 bg-white/5 px-3 py-3">Score</span>
+              <span className="rounded-md border border-white/10 bg-white/5 px-3 py-3">Track</span>
+            </div>
+          </div>
         </div>
 
-        {/* 카드 */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 border border-slate-100 dark:border-slate-700">
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">회원가입</h2>
+        <div className="p-6 sm:p-10">
+          <div className="mb-8">
+            <p className="text-xs font-black uppercase text-red-600 tracking-normal dark:text-red-400">RED FLAG</p>
+            <h2 className="section-title mt-2 text-3xl">회원가입</h2>
+            <p className="muted-copy mt-2 text-sm">계정을 만들고 관심종목과 리스크 리포트를 관리하세요.</p>
+          </div>
 
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
@@ -91,7 +102,7 @@ function Signup({ onLogin }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="홍길동"
-                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                className="field-input rounded-lg p-4"
               />
             </div>
             <div>
@@ -103,7 +114,7 @@ function Signup({ onLogin }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="example@email.com"
-                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                className="field-input rounded-lg p-4"
               />
             </div>
             <div>
@@ -115,7 +126,7 @@ function Signup({ onLogin }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="대/소문자·숫자·특수문자 포함 8자 이상"
-                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                className="field-input rounded-lg p-4"
               />
               {/* 정책 체크리스트 — 입력하기 시작하면 표시 */}
               {password.length > 0 && (
@@ -148,7 +159,7 @@ function Signup({ onLogin }) {
                 value={passwordConfirm}
                 onChange={(e) => setPasswordConfirm(e.target.value)}
                 placeholder="비밀번호 재입력"
-                className={`w-full p-4 rounded-xl border bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none transition ${
+                className={`field-input rounded-lg p-4 ${
                   passwordsMatch
                     ? 'border-green-500 focus:border-green-500'
                     : passwordsMismatch
@@ -170,7 +181,7 @@ function Signup({ onLogin }) {
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-sm text-red-600 dark:text-red-400">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300">
                 {error}
               </div>
             )}
@@ -178,9 +189,9 @@ function Signup({ onLogin }) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 mt-2"
+              className="primary-button mt-2 w-full rounded-lg py-4 font-black"
             >
-              {isLoading ? '가입 중...' : '회원가입'}
+              {isLoading ? '가입 중' : '회원가입'}
             </button>
           </form>
 

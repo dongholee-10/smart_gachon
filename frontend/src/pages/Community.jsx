@@ -81,59 +81,60 @@ function Community() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4">
+    <div className="page-shell max-w-5xl py-10 lg:py-14">
       {/* 헤더 */}
-      <div className="flex justify-between items-center mb-10">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter mb-1">
-            💬 커뮤니티
+          <p className="text-xs font-black uppercase text-red-600 tracking-normal dark:text-red-400">Community</p>
+          <h2 className="section-title mt-2 text-4xl">
+            커뮤니티
           </h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
+          <p className="muted-copy mt-2 text-sm">
             투자자들과 종목 리스크를 함께 분석하세요.
           </p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl transition-all"
+          className="primary-button rounded-lg px-6 py-3 font-black"
         >
-          {showForm ? '취소' : '✏️ 글쓰기'}
+          {showForm ? '취소' : '글쓰기'}
         </button>
       </div>
 
       {useMockCommunity && (
-        <span className="inline-block mb-6 text-xs bg-yellow-100 text-yellow-700 border border-yellow-200 px-3 py-1 rounded-full font-semibold dark:bg-yellow-900/30 dark:text-yellow-400">
-          ⚙ Mock 모드 — 백엔드 /community 연결 전
+        <span className="mb-6 inline-block rounded-md border border-yellow-200 bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700 dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-300">
+          Mock 모드 — 백엔드 /community 연결 전
         </span>
       )}
 
       {/* 글쓰기 폼 */}
       {showForm && (
-        <form onSubmit={handleCreatePost} className="mb-8 p-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+        <form onSubmit={handleCreatePost} className="surface-panel mb-8 space-y-4 rounded-xl p-6">
           <h3 className="font-bold text-slate-900 dark:text-white">새 글 작성</h3>
           <input
             type="text"
             placeholder="제목"
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
-            className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition"
+            className="field-input rounded-lg p-3"
           />
           <input
             type="text"
             placeholder="관련 종목 코드 (예: 005930) — 선택사항"
             value={form.ticker}
             onChange={(e) => setForm({ ...form, ticker: e.target.value })}
-            className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition"
+            className="field-input rounded-lg p-3"
           />
           <textarea
             placeholder="내용을 입력해주세요..."
             value={form.content}
             onChange={(e) => setForm({ ...form, content: e.target.value })}
             rows={4}
-            className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition resize-none"
+            className="field-input resize-none rounded-lg p-3"
           />
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl transition-all"
+            className="primary-button rounded-lg px-8 py-3 font-black"
           >
             게시하기
           </button>
@@ -144,7 +145,7 @@ function Community() {
       {isLoading ? (
         <div className="text-center py-20 text-slate-400 animate-pulse">불러오는 중...</div>
       ) : posts.length === 0 ? (
-        <div className="text-center py-20 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl">
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 py-20 text-center dark:border-slate-700 dark:bg-slate-900/70">
           <p className="text-slate-400">첫 번째 글을 작성해보세요!</p>
         </div>
       ) : (
@@ -152,18 +153,18 @@ function Community() {
           {posts.map((post) => (
             <div
               key={post.id}
-              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden"
+              className="surface-panel overflow-hidden rounded-xl"
             >
               {/* 게시글 헤더 */}
               <div
-                className="p-6 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                className="cursor-pointer p-6 transition hover:bg-slate-50 dark:hover:bg-slate-800/70"
                 onClick={() => setSelectedPost(selectedPost?.id === post.id ? null : post)}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-slate-400">{post.author}</span>
                     {post.ticker && (
-                      <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full font-semibold">
+                      <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
                         #{post.ticker}
                       </span>
                     )}
@@ -177,24 +178,24 @@ function Community() {
                     onClick={(e) => { e.stopPropagation(); handleLike(post.id); }}
                     className="text-xs text-slate-400 hover:text-red-500 transition font-semibold flex items-center gap-1"
                   >
-                    ❤️ {post.likes}
+                    Like {post.likes}
                   </button>
                   <span className="text-xs text-slate-400">
-                    💬 {post.comments.length}
+                    Comments {post.comments.length}
                   </span>
                 </div>
               </div>
 
               {/* 댓글 섹션 */}
               {selectedPost?.id === post.id && (
-                <div className="border-t border-slate-100 dark:border-slate-700 p-6 bg-slate-50 dark:bg-slate-900/30">
+                <div className="border-t border-slate-100 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-950/40">
                   <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6">{post.content}</p>
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
                     댓글 {post.comments.length}개
                   </h4>
                   <div className="space-y-3 mb-4">
                     {post.comments.map((c) => (
-                      <div key={c.id} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <div key={c.id} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
                         <div className="flex justify-between mb-1">
                           <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{c.author}</span>
                           <span className="text-xs text-slate-400">{formatDate(c.createdAt)}</span>
@@ -211,11 +212,11 @@ function Community() {
                       value={commentText}
                       onChange={(e) => setCommentText(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
-                      className="flex-1 p-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition text-sm"
+                      className="field-input flex-1 rounded-lg p-3 text-sm"
                     />
                     <button
                       onClick={() => handleAddComment(post.id)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-3 rounded-xl transition text-sm"
+                      className="primary-button rounded-lg px-5 py-3 text-sm font-bold"
                     >
                       등록
                     </button>
