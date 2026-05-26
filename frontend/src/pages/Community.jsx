@@ -5,6 +5,7 @@ import {
   mockGetPosts, mockCreatePost, mockAddComment, mockLikePost,
   getPosts, createPost, updatePost, deletePost, addComment, likePost,
 } from '../services/community';
+import StockAutocomplete from '../components/StockAutocomplete';
 
 const formatDate = (iso) => {
   try {
@@ -27,12 +28,15 @@ function Community() {
   const [selectedPost, setSelectedPost] = useState(null);
   const [commentText, setCommentText] = useState('');
 
-  // 글쓰기 폼
-  const [form, setForm] = useState({ title: '', content: '', ticker: '' });
+  // 글쓰기 폼 — ticker 컬럼에는 사용자에게 보이는 라벨(종목명)을 저장한다.
+  // 시연 단계라 종목 코드는 화면에 직접 노출하지 않고 식별은 종목명으로만.
+  const [form, setForm] = useState({ title: '', content: '' });
+  const [selectedStock, setSelectedStock] = useState(null);
 
   // 인라인 편집 상태 — 한 번에 한 글만 편집
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ title: '', content: '', ticker: '' });
+  const [editForm, setEditForm] = useState({ title: '', content: '' });
+  const [editStock, setEditStock] = useState(null);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -54,11 +58,18 @@ function Community() {
     e.preventDefault();
     if (!form.title.trim() || !form.content.trim()) return alert('제목과 내용을 입력해주세요.');
     try {
+      const payload = {
+        title: form.title,
+        content: form.content,
+        ticker: selectedStock ? selectedStock.name : null,
+        author: user?.name || '익명',
+      };
       const post = useMockCommunity
-        ? await mockCreatePost({ ...form, author: user?.name || '익명' })
-        : await createPost({ ...form, author: user?.name || '익명' });
+        ? await mockCreatePost(payload)
+        : await createPost(payload);
       setPosts((prev) => [post, ...prev]);
-      setForm({ title: '', content: '', ticker: '' });
+      setForm({ title: '', content: '' });
+      setSelectedStock(null);
       setShowForm(false);
     } catch (e) {
       alert(e.message);
@@ -90,12 +101,16 @@ function Community() {
 
   const startEdit = (post) => {
     setEditingId(post.id);
-    setEditForm({ title: post.title, content: post.content, ticker: post.ticker || '' });
+    setEditForm({ title: post.title, content: post.content });
+    // 기존 ticker 가 종목명 형태로 저장돼 있다면 노출용 라벨로 보여주고,
+    // 사용자가 명시적으로 새 종목을 선택하기 전엔 그대로 유지.
+    setEditStock(post.ticker ? { ticker: '', name: post.ticker, market: '' } : null);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditForm({ title: '', content: '', ticker: '' });
+    setEditForm({ title: '', content: '' });
+    setEditStock(null);
   };
 
   const handleUpdatePost = async (postId) => {
@@ -106,7 +121,7 @@ function Community() {
       const updated = await updatePost(postId, {
         title: editForm.title,
         content: editForm.content,
-        ticker: editForm.ticker || null,
+        ticker: editStock ? editStock.name : null,
       });
       setPosts((prev) => prev.map((p) => (p.id === postId ? updated : p)));
       if (selectedPost?.id === postId) setSelectedPost(updated);
@@ -168,13 +183,16 @@ function Community() {
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="field-input rounded-lg p-3"
           />
-          <input
-            type="text"
-            placeholder="관련 종목 코드 (예: 005930) — 선택사항"
-            value={form.ticker}
-            onChange={(e) => setForm({ ...form, ticker: e.target.value })}
-            className="field-input rounded-lg p-3"
-          />
+          <div>
+            <label className="mb-1.5 block text-xs font-bold text-slate-500">
+              관련 종목 (선택)
+            </label>
+            <StockAutocomplete
+              value={selectedStock}
+              onChange={setSelectedStock}
+              placeholder="종목명 검색 (예: 삼성)"
+            />
+          </div>
           <textarea
             placeholder="내용을 입력해주세요..."
             value={form.content}
@@ -220,13 +238,16 @@ function Community() {
                       className="field-input rounded-lg p-3"
                       placeholder="제목"
                     />
-                    <input
-                      type="text"
-                      value={editForm.ticker}
-                      onChange={(e) => setEditForm({ ...editForm, ticker: e.target.value })}
-                      className="field-input rounded-lg p-3"
-                      placeholder="종목 (선택)"
-                    />
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-500">
+                        관련 종목 (선택)
+                      </label>
+                      <StockAutocomplete
+                        value={editStock}
+                        onChange={setEditStock}
+                        placeholder="종목명 검색 (예: 삼성)"
+                      />
+                    </div>
                     <textarea
                       value={editForm.content}
                       onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}

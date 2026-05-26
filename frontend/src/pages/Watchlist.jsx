@@ -6,6 +6,7 @@ import {
   getWatchlist, addWatchlist, deleteWatchlist, updateMemo,
 } from '../services/watchlist';
 import { analyzeNews } from '../services/api';
+import StockAutocomplete from '../components/StockAutocomplete';
 
 const formatDate = (iso) => {
   try {
@@ -18,7 +19,8 @@ function Watchlist() {
   const [list, setList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ ticker: '', name: '', memo: '' });
+  const [selectedStock, setSelectedStock] = useState(null); // {ticker, name, market}
+  const [memo, setMemo] = useState('');
   const [editMemo, setEditMemo] = useState({}); // id -> memo 편집 상태
   const [analyzingId, setAnalyzingId] = useState(null);
 
@@ -40,17 +42,19 @@ function Watchlist() {
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!form.ticker.trim() || !form.name.trim()) return alert('종목 코드와 종목명을 입력해주세요.');
-    if (list.some((item) => item.ticker === form.ticker.trim())) {
+    if (!selectedStock) return alert('드롭다운에서 종목을 선택해주세요.');
+    if (list.some((item) => item.ticker === selectedStock.ticker)) {
       return alert('이미 등록된 관심종목입니다.');
     }
-    
+
     try {
+      const payload = { ticker: selectedStock.ticker, name: selectedStock.name, memo };
       const item = useMockWatchlist
-        ? await mockAddWatchlist(form)
-        : await addWatchlist(form);
+        ? await mockAddWatchlist(payload)
+        : await addWatchlist(payload);
       setList((prev) => [...prev, item]);
-      setForm({ ticker: '', name: '', memo: '' });
+      setSelectedStock(null);
+      setMemo('');
       setShowForm(false);
     } catch (e) {
       alert(e.message);
@@ -124,32 +128,33 @@ function Watchlist() {
       {showForm && (
         <form onSubmit={handleAdd} className="mb-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="font-bold text-slate-900">관심종목 추가</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              type="text"
-              placeholder="종목 코드 (예: 005930)"
-              value={form.ticker}
-              onChange={(e) => setForm({ ...form, ticker: e.target.value })}
-              className="field-input rounded-lg p-3"
+          <div>
+            <label className="mb-1.5 block text-xs font-bold text-slate-500">
+              종목 검색
+            </label>
+            <StockAutocomplete
+              value={selectedStock}
+              onChange={setSelectedStock}
+              placeholder="종목명 검색 (예: 삼성)"
             />
-            <input
-              type="text"
-              placeholder="종목명 (예: 삼성전자)"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="field-input rounded-lg p-3"
-            />
+            {selectedStock && (
+              <p className="mt-2 text-xs text-slate-400">
+                선택됨: <span className="font-bold text-slate-700">{selectedStock.name}</span>{' '}
+                <span className="font-mono">({selectedStock.market} · {selectedStock.ticker})</span>
+              </p>
+            )}
           </div>
           <input
             type="text"
             placeholder="메모 (선택사항)"
-            value={form.memo}
-            onChange={(e) => setForm({ ...form, memo: e.target.value })}
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
             className="field-input rounded-lg p-3"
           />
           <button
             type="submit"
-            className="rounded-xl bg-[#03c75a] px-8 py-3 text-sm font-black text-white transition hover:bg-[#02b350]"
+            disabled={!selectedStock}
+            className="rounded-xl bg-[#03c75a] px-8 py-3 text-sm font-black text-white transition hover:bg-[#02b350] disabled:opacity-50"
           >
             추가하기
           </button>
@@ -174,9 +179,6 @@ function Watchlist() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xl font-black text-slate-900">{item.name}</span>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold text-slate-500">
-                      {item.ticker}
-                    </span>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
                     <span>추가일 {formatDate(item.addedAt)}</span>
