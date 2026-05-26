@@ -3,6 +3,8 @@ import re
 import threading
 from typing import Dict
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 EN_MODEL = "ProsusAI/finbert"
@@ -54,6 +56,25 @@ class FinBERTAnalyzer:
     def analyze(self, text: str) -> dict:
         if not text:
             return {"label": "neutral", "score": 0.5}
+
+        if not settings.ENABLE_FINBERT:
+            logger.info("ENABLE_FINBERT=false, deterministic sentiment fallback을 사용합니다.")
+            lowered = text.lower()
+            negative_terms = [
+                "risk", "loss", "decline", "lawsuit", "investigation", "debt",
+                "리스크", "위험", "둔화", "하락", "급락", "적자", "손실", "소송", "조사", "규제",
+            ]
+            positive_terms = [
+                "growth", "profit", "increase", "recovery", "surge",
+                "성장", "흑자", "증가", "회복", "상승", "개선",
+            ]
+            negative_count = sum(1 for term in negative_terms if term in lowered)
+            positive_count = sum(1 for term in positive_terms if term in lowered)
+            if negative_count > positive_count:
+                return {"label": "negative", "score": min(0.95, 0.65 + negative_count * 0.08)}
+            if positive_count > negative_count:
+                return {"label": "positive", "score": min(0.95, 0.65 + positive_count * 0.08)}
+            return {"label": "neutral", "score": 0.7}
 
         lang = "kr" if _is_korean(text) else "en"
         pipe = self._get_pipeline(lang)
