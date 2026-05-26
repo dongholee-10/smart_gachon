@@ -178,12 +178,13 @@ def fetch_news(query: str, display: int = 10) -> list:
         "X-Naver-Client-Secret": settings.NAVER_CLIENT_SECRET
     }
 
-    enhanced_query = f"{query} 주가 실적 전망"
-
+    # 검색어를 그대로 네이버에 전달. 예전엔 \"<query> 주가 실적 전망\" 을 강제로 붙였는데
+    # 그 4단어 AND 조건이 소형주·일반 종목 뉴스를 대부분 탈락시켰음. STOCK_KEYWORDS 화이트리스트가
+    # 뒤에서 도메인 필터를 따로 걸어주므로 prefix 강제 없이도 주식 노이즈는 충분히 걸린다.
     params = {
-        "query": enhanced_query,
+        "query": query,
         "display": display,
-        "sort": "date"
+        "sort": "date",
     }
 
     response = requests.get(
@@ -202,7 +203,9 @@ def fetch_news(query: str, display: int = 10) -> list:
     items = data.get("items", [])
 
     now = datetime.now(timezone.utc)
-    three_days_ago = now - timedelta(days=3)
+    # 3일 윈도우는 소형·중형주에서 결과 0건을 자주 만듦. 14일로 늘려 코어 종목은
+    # 거의 항상 결과가 나오게 하고, 시점은 정렬·UI 표시로 사용자에게 위임.
+    cutoff = now - timedelta(days=14)
 
     scored_news = []
 
@@ -222,7 +225,7 @@ def fetch_news(query: str, display: int = 10) -> list:
         except Exception:
             continue
 
-        if pub_date < three_days_ago:
+        if pub_date < cutoff:
             continue
 
         score = sum(
@@ -243,4 +246,5 @@ def fetch_news(query: str, display: int = 10) -> list:
 
     unique_news = remove_duplicates(scored_news)
 
-    return unique_news[:5]
+    # display 를 그대로 따른다. 예전엔 [:5] 가 박혀 있어 호출자가 10을 보내도 5건만 나왔음.
+    return unique_news[:display]
