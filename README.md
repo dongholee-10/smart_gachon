@@ -119,10 +119,44 @@ Generates a summarized risk report.
 
 ## Deployment
 
-    docker build -t redflag-api .
-    docker run -p 8000:8000 redflag-api
+### 1. PostgreSQL (docker-compose)
 
-Docker ensures consistent runtime environments and stable execution of AI dependencies.
+DB만 컨테이너로 띄우고 백엔드·프론트는 로컬에서 직접 실행. macOS면 [Docker Desktop](https://www.docker.com/products/docker-desktop/) 또는 `brew install colima docker docker-compose` 후 `colima start`.
+
+```bash
+docker compose up -d db        # PG 백그라운드 기동 (5432 포트)
+docker compose ps              # healthy 표시까지 ~5초
+docker compose logs -f db      # 로그 보고 싶으면
+docker compose down            # 중지 (volume 유지)
+docker compose down -v         # volume까지 삭제 — 데이터 전부 날아감
+```
+
+기본 접속 정보 (`docker-compose.yml`):
+
+| 항목 | 값 |
+|---|---|
+| 호스트 | `localhost` |
+| 포트 | `5432` |
+| DB | `redflag` |
+| 유저 | `redflag` |
+| 비밀번호 | `redflag` |
+
+`backend/.env`의 `DATABASE_URL`이 이 값과 일치하면 됨 — `.env.example`에 기본값으로 채워둠.
+
+### 2. 백엔드·프론트 실행
+
+```bash
+# 백엔드
+cd backend
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+cp .env.example .env             # JWT_SECRET, NAVER 키 채우기
+.venv/bin/uvicorn app.main:app --reload
+
+# 프론트
+cd frontend && npm install && npm run dev
+```
+
+서버 첫 기동 시 SQLAlchemy `init_db()`가 PG에 테이블을 자동 생성. 회원가입 → 분석 → 게시글 등 모든 데이터가 PG에 영속.
 
 ---
 
