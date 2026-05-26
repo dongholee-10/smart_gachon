@@ -1,0 +1,199 @@
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { signupAPI, saveToken, saveUser } from '../services/auth';
+
+// 백엔드 정책과 동일: 8자+ / 대문자 / 소문자 / 숫자 / 특수문자.
+const PASSWORD_RULES = [
+  { key: 'length', label: '8자 이상', test: (v) => v.length >= 8 },
+  { key: 'upper', label: '대문자 포함 (A-Z)', test: (v) => /[A-Z]/.test(v) },
+  { key: 'lower', label: '소문자 포함 (a-z)', test: (v) => /[a-z]/.test(v) },
+  { key: 'digit', label: '숫자 포함 (0-9)', test: (v) => /\d/.test(v) },
+  {
+    key: 'special',
+    label: '특수문자 포함 (!@#$ 등)',
+    test: (v) => /[!@#$%^&*()\-_=+[\]{};:'",.<>/?\\|`~]/.test(v),
+  },
+];
+
+const passwordPolicyError = (pw) => {
+  const failing = PASSWORD_RULES.filter((r) => !r.test(pw));
+  if (failing.length === 0) return null;
+  return '비밀번호는 8자 이상이며 대문자·소문자·숫자·특수문자를 각각 1개 이상 포함해야 합니다.';
+};
+
+function Signup({ onLogin }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const passwordsMatch = passwordConfirm.length > 0 && password === passwordConfirm;
+  const passwordsMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim() || !password.trim() || !passwordConfirm.trim()) {
+      setError('모든 항목을 입력해주세요.');
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+    const policyError = passwordPolicyError(password);
+    if (policyError) {
+      setError(policyError);
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+    try {
+      const data = await signupAPI({ email, password, name });
+
+      saveToken(data.access_token);
+      saveUser(data.user);
+      onLogin(data.user);
+      navigate('/');
+    } catch (err) {
+      setError(err.message || '회원가입에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 px-4">
+      <div className="w-full max-w-md">
+        {/* 로고 */}
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter italic mb-2">
+            RED FLAG
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
+            Stock Risk Detection System
+          </p>
+        </div>
+
+        {/* 카드 */}
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 border border-slate-100 dark:border-slate-700">
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">회원가입</h2>
+
+          <form onSubmit={handleSignup} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+                이름
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="홍길동"
+                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+                이메일
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@email.com"
+                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+                비밀번호
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="대/소문자·숫자·특수문자 포함 8자 이상"
+                className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 transition"
+              />
+              {/* 정책 체크리스트 — 입력하기 시작하면 표시 */}
+              {password.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {PASSWORD_RULES.map((rule) => {
+                    const ok = rule.test(password);
+                    return (
+                      <li
+                        key={rule.key}
+                        className={`text-xs flex items-center gap-1.5 ${
+                          ok
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        <span>{ok ? '✓' : '·'}</span>
+                        {rule.label}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+                비밀번호 확인
+              </label>
+              <input
+                type="password"
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                placeholder="비밀번호 재입력"
+                className={`w-full p-4 rounded-xl border bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none transition ${
+                  passwordsMatch
+                    ? 'border-green-500 focus:border-green-500'
+                    : passwordsMismatch
+                    ? 'border-red-400 focus:border-red-500'
+                    : 'border-slate-200 dark:border-slate-600 focus:border-blue-500'
+                }`}
+              />
+              {/* 실시간 일치 여부 — 확인란을 비우면 숨김 */}
+              {passwordsMatch && (
+                <p className="mt-2 text-xs flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                  <span>✓</span> 비밀번호가 일치합니다
+                </p>
+              )}
+              {passwordsMismatch && (
+                <p className="mt-2 text-xs flex items-center gap-1.5 text-red-500 dark:text-red-400">
+                  <span>✗</span> 비밀번호가 일치하지 않습니다
+                </p>
+              )}
+            </div>
+
+            {error && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-sm text-red-600 dark:text-red-400">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 mt-2"
+            >
+              {isLoading ? '가입 중...' : '회원가입'}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
+            이미 계정이 있으신가요?{' '}
+            <Link to="/login" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+              로그인
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default Signup;
