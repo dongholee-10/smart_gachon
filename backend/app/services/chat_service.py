@@ -113,35 +113,28 @@ def clear_messages(db: Session, user_id: int, ticker: str) -> int:
     return deleted
 
 
-def send_message(db: Session, user_id: int, ticker: str, user_text: str) -> ChatMessage:
-    if not settings.OPENAI_API_KEY:
-        raise LLMNotConfigured(
-            "AI Agent 기능은 OPENAI_API_KEY 가 .env 에 설정되어야 동작합니다."
-        )
+def _select_provider() -> str:
+    """LLM_PROVIDER 가 명시되면 그대로, 비어 있으면 키가 있는 쪽을 자동 선택."""
+    p = (settings.LLM_PROVIDER or "").lower()
+    if p in {"openai", "anthropic"}:
+        return p
+    if settings.ANTHROPIC_API_KEY:
+        return "anthropic"
+    if settings.OPENAI_API_KEY:
+        return "openai"
+    return ""
 
-    # 1. 사용자 메시지 먼저 저장
-    user_msg = ChatMessage(user_id=user_id, ticker=ticker, role="user", content=user_text)
-    db.add(user_msg)
-    db.commit()
-    db.refresh(user_msg)
 
-    # 2. system + history + 현재 user 메시지로 messages 배열 빌드
-    system_prompt = _build_system_prompt(ticker, db, user_id)
-    history = _load_history(db, user_id, ticker, MAX_HISTORY_TURNS)
-
-    messages = [{"role": "system", "content": system_prompt}]
-    # 마지막은 이미 db 에 들어간 user_msg — history 의 일부. 중복 방지 위해 그대로 사용.
-    for h in history:
-        if h.id == user_msg.id:
-            continue  # 시스템 프롬프트 다음에 별도로 붙임
-        messages.append({"role": h.role, "content": h.content})
-    messages.append({"role": "user", "content": user_text})
-
-    # 3. OpenAI 호출
+def _call_openai(system_prompt: str, history_msgs: list, user_text: str) -> str:
     try:
         from openai import OpenAI
     except ImportError as exc:
         raise LLMNotConfigured("openai 패키지가 설치되어 있지 않습니다.") from exc
+
+    messages = [{"role": "system", "content": system_prompt}]
+    for h in history_msgs:
+        messages.append({"role": h.role, "content": h.content})
+    messages.append({"role": "user", "content": user_text})
 
     try:
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -151,10 +144,68 @@ def send_message(db: Session, user_id: int, ticker: str, user_text: str) -> Chat
             temperature=0.4,
             max_tokens=400,
         )
-        reply = response.choices[0].message.content.strip()
+        return response.choices[0].message.content.strip()
     except Exception as exc:
         logger.exception("OpenAI 호출 실패")
         raise LLMCallFailed(str(exc)) from exc
+
+
+def _call_anthropic(system_prompt: str, history_msgs: list, user_text: str) -> str:
+    try:
+        from anthropic import Anthropic
+    except ImportError as exc:
+        raise LLMNotConfigured("anthropic 패키지가 설치되어 있지 않습니다.") from exc
+
+    # Anthropic 은 system 을 별도 파라미터로, messages 에는 user/assistant 만.
+    msgs = []
+    for h in history_msgs:
+        if h.role not in {"user", "assistant"}:
+            continue
+        msgs.append({"role": h.role, "content": h.content})
+    msgs.append({"role": "user", "content": user_text})
+
+    try:
+        client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model=settings.ANTHROPIC_MODEL,
+            max_tokens=500,
+            system=system_prompt,
+            messages=msgs,
+        )
+        text = "".join(b.text for b in response.content if hasattr(b, "text")).strip()
+        return text
+    except Exception as exc:
+        logger.exception("Anthropic 호출 실패")
+        raise LLMCallFailed(str(exc)) from exc
+
+
+def send_message(db: Session, user_id: int, ticker: str, user_text: str) -> ChatMessage:
+    provider = _select_provider()
+    if not provider:
+        raise LLMNotConfigured(
+            "AI Agent 기능은 .env 에 ANTHROPIC_API_KEY 또는 OPENAI_API_KEY 가 설정되어야 동작합니다."
+        )
+    if provider == "anthropic" and not settings.ANTHROPIC_API_KEY:
+        raise LLMNotConfigured("LLM_PROVIDER=anthropic 인데 ANTHROPIC_API_KEY 가 비어 있습니다.")
+    if provider == "openai" and not settings.OPENAI_API_KEY:
+        raise LLMNotConfigured("LLM_PROVIDER=openai 인데 OPENAI_API_KEY 가 비어 있습니다.")
+
+    # 1. 사용자 메시지 저장
+    user_msg = ChatMessage(user_id=user_id, ticker=ticker, role="user", content=user_text)
+    db.add(user_msg)
+    db.commit()
+    db.refresh(user_msg)
+
+    # 2. 컨텍스트 빌드 (현재 user_msg 는 history 에서 제외하고 user_text 로 별도 전달)
+    system_prompt = _build_system_prompt(ticker, db, user_id)
+    history = _load_history(db, user_id, ticker, MAX_HISTORY_TURNS)
+    history_for_llm = [h for h in history if h.id != user_msg.id]
+
+    # 3. provider 별 호출
+    if provider == "anthropic":
+        reply = _call_anthropic(system_prompt, history_for_llm, user_text)
+    else:
+        reply = _call_openai(system_prompt, history_for_llm, user_text)
 
     # 4. assistant 응답 저장
     assistant_msg = ChatMessage(user_id=user_id, ticker=ticker, role="assistant", content=reply)
