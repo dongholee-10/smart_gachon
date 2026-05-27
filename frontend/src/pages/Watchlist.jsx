@@ -256,6 +256,12 @@ function Watchlist() {
                   {/* 버튼 */}
                   <div className="flex shrink-0 items-center gap-2">
                     <button
+                      onClick={() => navigate(`/chat/${item.ticker}`, { state: { name: item.name } })}
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-[#03c75a] hover:text-[#03c75a]"
+                    >
+                      Agent 대화
+                    </button>
+                    <button
                       onClick={() => handleAnalyze(item)}
                       disabled={analyzingId === item.id}
                       className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700 transition hover:border-[#03c75a] hover:bg-lime-50 disabled:opacity-50"
