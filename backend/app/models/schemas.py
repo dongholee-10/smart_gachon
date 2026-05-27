@@ -228,3 +228,17 @@ class WatchlistItemCreate(BaseModel):
 
 class WatchlistMemoUpdate(BaseModel):
     memo: str = Field(max_length=500)
+
+
+# ── Chat (종목 Agent) ────────────────────────────────────────────────────────
+
+class ChatMessageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    role: str  # 'user' | 'assistant'
+    content: str
+    created_at: Optional[datetime] = None
+
+
+class ChatSendRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)

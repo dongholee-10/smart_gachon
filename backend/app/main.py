@@ -12,6 +12,7 @@ logging.basicConfig(
 
 from app.api.analyze_router import router as analyze_router
 from app.api.auth_router import router as auth_router
+from app.api.chat_router import router as chat_router
 from app.api.community_router import router as community_router
 from app.api.news_router import router as news_router
 from app.api.report_router import router as report_router
@@ -53,6 +54,7 @@ app.include_router(report_router)
 app.include_router(community_router)
 app.include_router(watchlist_router)
 app.include_router(stocks_router)
+app.include_router(chat_router)
 
 
 @app.get("/")

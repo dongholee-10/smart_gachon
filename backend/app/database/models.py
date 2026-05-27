@@ -23,6 +23,7 @@ class User(Base):
     posts = relationship("Post", back_populates="author")
     comments = relationship("Comment", back_populates="author")
     watchlist = relationship("WatchlistItem", back_populates="user")
+    chat_messages = relationship("ChatMessage", back_populates="user", cascade="all, delete-orphan")
 
 
 class AnalysisResult(Base):
@@ -84,3 +85,18 @@ class WatchlistItem(Base):
     added_at = Column(DateTime, default=_now)
 
     user = relationship("User", back_populates="watchlist")
+
+
+class ChatMessage(Base):
+    """사용자가 특정 종목 agent 와 주고받은 1:1 채팅 메시지."""
+
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    ticker = Column(String(20), nullable=False, index=True)
+    role = Column(String(20), nullable=False)  # 'user' | 'assistant' | 'system'
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=_now, index=True)
+
+    user = relationship("User", back_populates="chat_messages")

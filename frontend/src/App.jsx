@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Community from './pages/Community';
 import Watchlist from './pages/Watchlist';
+import Chat from './pages/Chat';
 import { getUser, removeToken, removeUser } from './services/auth';
 
 // 로그인 안 했으면 /login 으로 리다이렉트
@@ -90,6 +91,9 @@ function App() {
             } />
             <Route path="/community" element={
               <PrivateRoute user={user}><Community /></PrivateRoute>
+            } />
+            <Route path="/chat/:ticker" element={
+              <PrivateRoute user={user}><Chat /></PrivateRoute>
             } />
           </Routes>
         </main>
