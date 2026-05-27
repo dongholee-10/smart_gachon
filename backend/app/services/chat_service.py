@@ -114,10 +114,16 @@ def clear_messages(db: Session, user_id: int, ticker: str) -> int:
 
 
 def _select_provider() -> str:
-    """LLM_PROVIDER 가 명시되면 그대로, 비어 있으면 키가 있는 쪽을 자동 선택."""
+    """LLM_PROVIDER 가 명시되면 그대로, 비어 있으면 키가 있는 쪽을 자동 선택.
+
+    우선순위 (auto-select): gemini → anthropic → openai
+    Gemini 가 가장 위인 이유: 무료 tier 가 가장 넉넉해서 \"키가 있다\" = \"호출 가능\" 확률이 높음.
+    """
     p = (settings.LLM_PROVIDER or "").lower()
-    if p in {"openai", "anthropic"}:
+    if p in {"openai", "anthropic", "gemini"}:
         return p
+    if settings.GEMINI_API_KEY:
+        return "gemini"
     if settings.ANTHROPIC_API_KEY:
         return "anthropic"
     if settings.OPENAI_API_KEY:
@@ -147,6 +153,35 @@ def _call_openai(system_prompt: str, history_msgs: list, user_text: str) -> str:
         return response.choices[0].message.content.strip()
     except Exception as exc:
         logger.exception("OpenAI 호출 실패")
+        raise LLMCallFailed(str(exc)) from exc
+
+
+def _call_gemini(system_prompt: str, history_msgs: list, user_text: str) -> str:
+    try:
+        import google.generativeai as genai
+    except ImportError as exc:
+        raise LLMNotConfigured("google-generativeai 패키지가 설치되어 있지 않습니다.") from exc
+
+    # Gemini 의 role 명은 'user' / 'model'. assistant 를 model 로 매핑.
+    history = []
+    for h in history_msgs:
+        role = "model" if h.role == "assistant" else "user"
+        history.append({"role": role, "parts": [h.content]})
+
+    try:
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        model = genai.GenerativeModel(
+            model_name=settings.GEMINI_MODEL,
+            system_instruction=system_prompt,
+        )
+        chat = model.start_chat(history=history)
+        response = chat.send_message(
+            user_text,
+            generation_config={"max_output_tokens": 600, "temperature": 0.4},
+        )
+        return (response.text or "").strip()
+    except Exception as exc:
+        logger.exception("Gemini 호출 실패")
         raise LLMCallFailed(str(exc)) from exc
 
 
@@ -183,8 +218,10 @@ def send_message(db: Session, user_id: int, ticker: str, user_text: str) -> Chat
     provider = _select_provider()
     if not provider:
         raise LLMNotConfigured(
-            "AI Agent 기능은 .env 에 ANTHROPIC_API_KEY 또는 OPENAI_API_KEY 가 설정되어야 동작합니다."
+            "AI Agent 기능은 .env 에 GEMINI_API_KEY / ANTHROPIC_API_KEY / OPENAI_API_KEY 중 하나가 설정되어야 동작합니다."
         )
+    if provider == "gemini" and not settings.GEMINI_API_KEY:
+        raise LLMNotConfigured("LLM_PROVIDER=gemini 인데 GEMINI_API_KEY 가 비어 있습니다.")
     if provider == "anthropic" and not settings.ANTHROPIC_API_KEY:
         raise LLMNotConfigured("LLM_PROVIDER=anthropic 인데 ANTHROPIC_API_KEY 가 비어 있습니다.")
     if provider == "openai" and not settings.OPENAI_API_KEY:
@@ -202,7 +239,9 @@ def send_message(db: Session, user_id: int, ticker: str, user_text: str) -> Chat
     history_for_llm = [h for h in history if h.id != user_msg.id]
 
     # 3. provider 별 호출
-    if provider == "anthropic":
+    if provider == "gemini":
+        reply = _call_gemini(system_prompt, history_for_llm, user_text)
+    elif provider == "anthropic":
         reply = _call_anthropic(system_prompt, history_for_llm, user_text)
     else:
         reply = _call_openai(system_prompt, history_for_llm, user_text)
