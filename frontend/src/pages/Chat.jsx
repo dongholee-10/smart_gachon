@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { clearChatHistory, listChatMessages, sendChatMessage } from '../services/chat';
+import { clearChatHistory, listChatMessages, streamChatMessage } from '../services/chat';
 import { fetchStockQuote } from '../services/stocks';
 
 const formatTime = (iso) => {
@@ -67,31 +67,45 @@ function Chat() {
     const text = input.trim();
     if (!text || isSending) return;
 
-    // 낙관적 UI — 사용자 메시지를 즉시 표시 (서버 저장은 백그라운드)
-    const optimistic = {
-      id: `opt-${Date.now()}`,
-      role: 'user',
-      content: text,
-      created_at: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, optimistic]);
+    const streamId = `stream-${Date.now()}`;
+
+    // 사용자 메시지 즉시 표시
+    setMessages((prev) => [
+      ...prev,
+      { id: `user-${streamId}`, role: 'user', content: text, created_at: new Date().toISOString() },
+      { id: streamId, role: 'assistant', content: '', created_at: new Date().toISOString(), streaming: true },
+    ]);
     setInput('');
     setIsSending(true);
     setError('');
 
-    try {
-      const assistant = await sendChatMessage(ticker, text);
-      // 응답 받으면 전체 히스토리 다시 fetch (서버에 저장된 user_msg 포함)
-      const refreshed = await listChatMessages(ticker);
-      setMessages(refreshed);
-    } catch (err) {
-      const detail = err.response?.data?.detail || err.message;
-      setError(detail || '전송에 실패했습니다.');
-      // 낙관적 추가 롤백
-      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-    } finally {
-      setIsSending(false);
-    }
+    await streamChatMessage(
+      ticker,
+      text,
+      // onToken: 글자가 올 때마다 스트리밍 버블에 추가
+      (token) => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamId ? { ...m, content: m.content + token } : m
+          )
+        );
+      },
+      // onDone: 스트리밍 완료 — streaming 플래그 해제
+      (savedId) => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamId ? { ...m, id: savedId, streaming: false } : m
+          )
+        );
+        setIsSending(false);
+      },
+      // onError
+      (errMsg) => {
+        setError(errMsg);
+        setMessages((prev) => prev.filter((m) => m.id !== streamId && m.id !== `user-${streamId}`));
+        setIsSending(false);
+      },
+    );
   };
 
   const handleClear = async () => {
@@ -167,7 +181,12 @@ function Chat() {
                       : 'bg-slate-100 text-slate-800'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{m.content}</p>
+                  <p className="whitespace-pre-wrap">
+                    {m.content}
+                    {m.streaming && (
+                      <span className="ml-0.5 inline-block h-4 w-0.5 bg-slate-400 align-middle animate-pulse" />
+                    )}
+                  </p>
                   <p
                     className={`mt-1 text-[10px] ${m.role === 'user' ? 'text-emerald-100' : 'text-slate-400'}`}
                   >
@@ -176,17 +195,6 @@ function Chat() {
                 </div>
               </div>
             ))}
-            {isSending && (
-              <div className="flex justify-start">
-                <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-500">
-                  <span className="inline-flex gap-1">
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: '0ms' }} />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: '150ms' }} />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: '300ms' }} />
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>

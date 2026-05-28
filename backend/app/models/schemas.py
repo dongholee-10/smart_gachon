@@ -72,6 +72,11 @@ class CompanyAnalyzeRequest(BaseModel):
     display: Optional[int] = 10
 
 
+class CompareRequest(BaseModel):
+    tickers: List[str] = Field(..., min_length=2, max_length=4)
+    display: int = Field(5, ge=1, le=10)
+
+
 class ReportRequest(BaseModel):
     result_id: int
 

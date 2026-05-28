@@ -38,3 +38,13 @@ export const fetchReport = async (resultId) => {
   const { data } = await api.post('/report', { result_id: resultId });
   return data;
 };
+
+export const compareStocks = async (tickers, display = 5) => {
+  const { data } = await api.post('/analyze/compare', { tickers, display });
+  return data;
+};
+
+export const searchStocks = async (q) => {
+  const { data } = await api.get('/stocks/search', { params: { q, limit: 8 } });
+  return data;
+};

@@ -214,6 +214,96 @@ def _call_anthropic(system_prompt: str, history_msgs: list, user_text: str) -> s
         raise LLMCallFailed(str(exc)) from exc
 
 
+def _stream_openai(system_prompt: str, history_msgs: list, user_text: str):
+    from openai import OpenAI
+    messages = [{"role": "system", "content": system_prompt}]
+    for h in history_msgs:
+        messages.append({"role": h.role, "content": h.content})
+    messages.append({"role": "user", "content": user_text})
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    with client.chat.completions.create(
+        model=settings.OPENAI_MODEL, messages=messages,
+        temperature=0.4, max_tokens=600, stream=True,
+    ) as stream:
+        for chunk in stream:
+            token = chunk.choices[0].delta.content or ""
+            if token:
+                yield token
+
+
+def _stream_gemini(system_prompt: str, history_msgs: list, user_text: str):
+    import google.generativeai as genai
+    history = []
+    for h in history_msgs:
+        history.append({"role": "model" if h.role == "assistant" else "user", "parts": [h.content]})
+    genai.configure(api_key=settings.GEMINI_API_KEY)
+    model = genai.GenerativeModel(model_name=settings.GEMINI_MODEL, system_instruction=system_prompt)
+    chat = model.start_chat(history=history)
+    response = chat.send_message(
+        user_text,
+        generation_config={"max_output_tokens": 600, "temperature": 0.4},
+        stream=True,
+    )
+    for chunk in response:
+        token = chunk.text or ""
+        if token:
+            yield token
+
+
+def _stream_anthropic(system_prompt: str, history_msgs: list, user_text: str):
+    from anthropic import Anthropic
+    msgs = [{"role": h.role, "content": h.content} for h in history_msgs if h.role in {"user", "assistant"}]
+    msgs.append({"role": "user", "content": user_text})
+    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    with client.messages.stream(
+        model=settings.ANTHROPIC_MODEL, max_tokens=600,
+        system=system_prompt, messages=msgs,
+    ) as stream:
+        for text in stream.text_stream:
+            if text:
+                yield text
+
+
+def prepare_stream(db: Session, user_id: int, ticker: str, user_text: str):
+    """사용자 메시지 저장 + 컨텍스트 준비. 스트리밍 시작 전에 호출."""
+    provider = _select_provider()
+    if not provider:
+        raise LLMNotConfigured(
+            "AI Agent 기능은 .env 에 GEMINI_API_KEY / ANTHROPIC_API_KEY / OPENAI_API_KEY 중 하나가 필요합니다."
+        )
+    user_msg = ChatMessage(user_id=user_id, ticker=ticker, role="user", content=user_text)
+    db.add(user_msg)
+    db.commit()
+    db.refresh(user_msg)
+
+    system_prompt = _build_system_prompt(ticker, db, user_id)
+    history = _load_history(db, user_id, ticker, MAX_HISTORY_TURNS)
+    history_for_llm = [h for h in history if h.id != user_msg.id]
+    return provider, user_msg, system_prompt, history_for_llm
+
+
+def iter_stream_tokens(provider: str, system_prompt: str, history_for_llm: list, user_text: str):
+    """provider 에 맞는 스트리밍 제너레이터를 반환."""
+    try:
+        if provider == "gemini":
+            yield from _stream_gemini(system_prompt, history_for_llm, user_text)
+        elif provider == "anthropic":
+            yield from _stream_anthropic(system_prompt, history_for_llm, user_text)
+        else:
+            yield from _stream_openai(system_prompt, history_for_llm, user_text)
+    except Exception as exc:
+        logger.exception("스트리밍 LLM 호출 실패")
+        raise LLMCallFailed(str(exc)) from exc
+
+
+def save_assistant_message(db: Session, user_id: int, ticker: str, content: str) -> ChatMessage:
+    msg = ChatMessage(user_id=user_id, ticker=ticker, role="assistant", content=content)
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+    return msg
+
+
 def send_message(db: Session, user_id: int, ticker: str, user_text: str) -> ChatMessage:
     provider = _select_provider()
     if not provider:

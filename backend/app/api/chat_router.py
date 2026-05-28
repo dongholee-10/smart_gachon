@@ -1,11 +1,13 @@
+import json
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
 from app.database.models import User
-from app.database.session import get_db
+from app.database.session import SessionLocal, get_db
 from app.models.schemas import ChatMessageOut, ChatSendRequest
 from app.services import chat_service
 
@@ -41,6 +43,48 @@ def send_message(
         raise HTTPException(status_code=400, detail=str(e))
     except chat_service.LLMCallFailed as e:
         raise HTTPException(status_code=502, detail=f"AI 호출 실패: {e}")
+
+
+@router.post("/stocks/{ticker}/stream")
+def stream_message(
+    ticker: str,
+    body: ChatSendRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    ticker = _normalize_ticker(ticker)
+    try:
+        provider, _, system_prompt, history = chat_service.prepare_stream(
+            db, user.id, ticker, body.message
+        )
+    except chat_service.LLMNotConfigured as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    user_id = user.id
+
+    def generate():
+        accumulated: list[str] = []
+        try:
+            for token in chat_service.iter_stream_tokens(provider, system_prompt, history, body.message):
+                accumulated.append(token)
+                yield f"data: {json.dumps({'token': token})}\n\n"
+        except chat_service.LLMCallFailed as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            return
+
+        full_text = "".join(accumulated)
+        save_db = SessionLocal()
+        try:
+            msg = chat_service.save_assistant_message(save_db, user_id, ticker, full_text)
+            yield f"data: {json.dumps({'done': True, 'id': msg.id})}\n\n"
+        finally:
+            save_db.close()
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.delete("/stocks/{ticker}/messages", status_code=status.HTTP_204_NO_CONTENT)

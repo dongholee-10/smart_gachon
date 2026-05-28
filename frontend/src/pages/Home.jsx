@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { analyzeNews, searchNews, fetchLatestNews } from '../services/api';
+import { analyzeNews, searchNews, fetchLatestNews, searchStocks } from '../services/api';
 import { fetchTrendingStocks } from '../services/stocks';
 import { getWatchlist } from '../services/watchlist';
 import AnimatedRiskGauge from '../components/AnimatedRiskGauge';
@@ -48,7 +48,41 @@ function Home() {
   const [analysisResults, setAnalysisResults] = useState({});
   const [sortOrder, setSortOrder] = useState('latest');
   const [trending, setTrending] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef(null);
+  const suggestTimer = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSearchInput = (val) => {
+    setSearchTerm(val);
+    clearTimeout(suggestTimer.current);
+    if (!val.trim()) { setSuggestions([]); setShowSuggestions(false); return; }
+    suggestTimer.current = setTimeout(async () => {
+      try {
+        const results = await searchStocks(val.trim());
+        setSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      } catch { setSuggestions([]); }
+    }, 250);
+  };
+
+  const selectSuggestion = (name) => {
+    setSearchTerm(name);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    runSearch(name);
+  };
 
   // 사용자가 관심종목을 설정해뒀으면 그 종목들의 뉴스를 우선 노출.
   // 비어 있거나 토큰 없으면 일반 최신 뉴스 fallback.
@@ -218,22 +252,39 @@ function Home() {
           </p>
         </div>
 
-        <div className="mx-auto mt-8 flex max-w-3xl items-center rounded-full border-2 border-[#03c75a] bg-white px-5 py-2 shadow-[0_6px_18px_rgba(3,199,90,0.12)]">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder="검색어를 입력하세요"
-            className="min-w-0 flex-1 border-0 bg-transparent px-2 py-4 text-lg font-semibold text-slate-900 outline-none placeholder:text-slate-400"
-          />
-          <button
-            onClick={handleSearch}
-            disabled={isLoading}
-            className="h-11 rounded-full bg-[#03c75a] px-7 text-sm font-black text-white transition hover:bg-[#02b350] disabled:opacity-50"
-          >
-            {isLoading ? '검색 중' : '검색'}
-          </button>
+        <div ref={searchRef} className="relative mx-auto mt-8 max-w-3xl">
+          <div className="flex items-center rounded-full border-2 border-[#03c75a] bg-white px-5 py-2 shadow-[0_6px_18px_rgba(3,199,90,0.12)]">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => handleSearchInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { setShowSuggestions(false); handleSearch(); } }}
+              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              placeholder="기업명 또는 종목명 검색 (예: 삼성전자)"
+              className="min-w-0 flex-1 border-0 bg-transparent px-2 py-4 text-lg font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+            />
+            <button
+              onClick={() => { setShowSuggestions(false); handleSearch(); }}
+              disabled={isLoading}
+              className="h-11 rounded-full bg-[#03c75a] px-7 text-sm font-black text-white transition hover:bg-[#02b350] disabled:opacity-50"
+            >
+              {isLoading ? '검색 중' : '검색'}
+            </button>
+          </div>
+          {showSuggestions && suggestions.length > 0 && (
+            <ul className="absolute left-0 right-0 z-50 mt-2 rounded-2xl border border-slate-100 bg-white shadow-xl overflow-hidden">
+              {suggestions.map((s) => (
+                <li
+                  key={s.ticker}
+                  onMouseDown={() => selectSuggestion(s.name)}
+                  className="flex cursor-pointer items-center justify-between px-6 py-3 text-sm hover:bg-slate-50"
+                >
+                  <span className="font-semibold text-slate-800">{s.name}</span>
+                  <span className="text-xs text-slate-400">{s.ticker} · {s.market}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="mx-auto mt-4 max-w-3xl text-xs font-bold uppercase tracking-widest text-slate-400">
@@ -267,9 +318,19 @@ function Home() {
         <div className="mx-auto mt-5 flex max-w-3xl flex-wrap justify-center gap-3 text-sm font-bold text-slate-500">
           <span>뉴스 {newsList.length}건</span>
           <span className="text-slate-300">|</span>
-          <span>High Risk {highRiskCount}건</span>
-          <span className="text-slate-300">|</span>
-          <span>최고 점수 {maxScore}점</span>
+          {analyzedCount > 0 ? (
+            <>
+              <span className={highRiskCount > 0 ? 'text-red-500' : ''}>
+                High Risk {highRiskCount}건
+              </span>
+              <span className="text-slate-300">|</span>
+              <span className={maxScore >= 70 ? 'text-red-500' : maxScore >= 40 ? 'text-orange-400' : ''}>
+                최고 점수 {maxScore}점
+              </span>
+            </>
+          ) : (
+            <span className="text-slate-400 font-normal">뉴스를 클릭하면 AI가 위험도를 분석합니다</span>
+          )}
         </div>
       </section>
 
