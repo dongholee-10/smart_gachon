@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,12 +8,13 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, get_optional_user
 from app.database.models import User
 from app.database.repository import get_analysis_result, list_analysis_results
-from app.database.session import get_db
+from app.database.session import SessionLocal, get_db
 from app.models.schemas import (
     AnalyzeRequest,
     AnalyzeResponse,
     CompanyAnalyzeRequest,
     CompanyAnalyzeResponse,
+    CompareRequest,
 )
 from app.services.analysis_service import analyze_company_news, analyze_single_news
 
@@ -66,6 +68,40 @@ def analyze_company(
     except Exception:
         logger.exception("Company analysis failed")
         raise HTTPException(status_code=500, detail="분석 처리 중 오류가 발생했습니다.")
+
+
+@router.post("/compare", response_model=List[CompanyAnalyzeResponse])
+def compare_companies(
+    request: CompareRequest,
+    user: Optional[User] = Depends(get_optional_user),
+):
+    order = {ticker: i for i, ticker in enumerate(request.tickers)}
+    results: list[dict] = []
+
+    def _analyze_one(ticker: str) -> dict:
+        db = SessionLocal()
+        try:
+            return analyze_company_news(
+                db=db,
+                company=ticker,
+                display=request.display,
+                user_id=user.id if user else None,
+            )
+        finally:
+            db.close()
+
+    with ThreadPoolExecutor(max_workers=min(len(request.tickers), 4)) as executor:
+        futures = {executor.submit(_analyze_one, t): t for t in request.tickers}
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                results.append(future.result())
+            except Exception:
+                logger.exception("Compare failed for %s", ticker)
+                results.append({"company": ticker, "news_count": 0, "results": []})
+
+    results.sort(key=lambda r: order.get(r["company"], 999))
+    return results
 
 
 @router.get("/results/{result_id}", response_model=AnalyzeResponse)
