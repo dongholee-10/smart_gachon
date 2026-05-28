@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,11 +21,12 @@ from app.api.report_router import router as report_router
 from app.api.stocks_router import router as stocks_router
 from app.api.watchlist_router import router as watchlist_router
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.database.session import init_db
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    settings.validate()
     init_db()
     yield
 
@@ -38,6 +41,9 @@ app = FastAPI(
     ),
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

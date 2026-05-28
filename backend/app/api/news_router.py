@@ -15,7 +15,7 @@ def get_latest_news(
         news_list = fetch_latest_news(display=display)
         return {"news": news_list}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="뉴스 조회 중 오류가 발생했습니다.")
 
 
 @router.get("", response_model=NewsSearchResponse)
@@ -29,4 +29,4 @@ def search_news(
         news_list = fetch_news(query=query, display=display)
         return {"news": news_list}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="뉴스 검색 중 오류가 발생했습니다.")

@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from typing import List
@@ -5,6 +6,8 @@ from typing import List
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 def _require_env(key: str) -> str:
@@ -28,7 +31,7 @@ class Settings:
     # JWT_SECRET은 반드시 .env에 설정되어야 함
     JWT_SECRET: str = os.getenv("JWT_SECRET", "")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-    JWT_EXPIRES_MINUTES: int = int(os.getenv("JWT_EXPIRES_MINUTES", "1440"))
+    JWT_EXPIRES_MINUTES: int = int(os.getenv("JWT_EXPIRES_MINUTES", "60"))
 
     # LLM (optional)
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "").lower()
@@ -51,6 +54,8 @@ class Settings:
                 "JWT_SECRET이 설정되지 않았습니다. "
                 ".env 파일에 JWT_SECRET=<강력한_랜덤_문자열> 을 추가하세요."
             )
+        if len(self.JWT_SECRET) < 32:
+            logger.warning("JWT_SECRET이 32자 미만입니다. 프로덕션에서는 더 긴 시크릿을 사용하세요.")
 
 
 settings = Settings()
