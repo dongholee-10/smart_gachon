@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { analyzeNews, searchNews, fetchLatestNews, searchStocks } from '../services/api';
-import { fetchTrendingStocks } from '../services/stocks';
+import { fetchTrendingStocks, fetchStockHistory, fetchKospiHistory } from '../services/stocks';
 import { getWatchlist } from '../services/watchlist';
 import AnimatedRiskGauge from '../components/AnimatedRiskGauge';
 
@@ -40,6 +43,46 @@ const toTimestamp = (pubDate) => {
 
 const stripTags = (html) => (html || '').replace(/<[^>]+>/g, '');
 
+function StockMiniChart({ data, title = '3개월 주가', unit = '원' }) {
+  if (!Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="stock-mini-empty">
+        주가 그래프를 불러올 수 없습니다.
+      </div>
+    );
+  }
+
+  const first = data[0]?.close ?? 0;
+  const last = data[data.length - 1]?.close ?? first;
+  const changePct = first ? ((last - first) / first) * 100 : 0;
+  const lineColor = changePct >= 0 ? '#ef4444' : '#2563eb';
+
+  return (
+    <div className="stock-mini-chart">
+      <div className="stock-mini-head">
+        <span>{title}</span>
+        <strong className={changePct >= 0 ? 'text-red-500' : 'text-blue-600'}>
+          {changePct >= 0 ? '+' : ''}{changePct.toFixed(2)}%
+        </strong>
+      </div>
+      <div className="h-32">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+            <XAxis dataKey="date" hide />
+            <YAxis hide domain={['dataMin', 'dataMax']} />
+            <Tooltip
+              formatter={(value) => [`${Number(value).toLocaleString()}${unit}`, '종가']}
+              labelFormatter={(label) => label}
+              contentStyle={{ borderRadius: 10, borderColor: '#e2e8f0', fontSize: 12 }}
+            />
+            <Line type="monotone" dataKey="close" stroke={lineColor} strokeWidth={2.5} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -50,6 +93,10 @@ function Home() {
   const [trending, setTrending] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedStock, setSelectedStock] = useState(null);
+  const [priceHistory, setPriceHistory] = useState({});
+  const [spotlightStock, setSpotlightStock] = useState(null);
+  const [kospiHistory, setKospiHistory] = useState(null);
   const searchRef = useRef(null);
   const suggestTimer = useRef(null);
   const navigate = useNavigate();
@@ -77,11 +124,12 @@ function Home() {
     }, 250);
   };
 
-  const selectSuggestion = (name) => {
-    setSearchTerm(name);
+  const selectSuggestion = (stock) => {
+    setSearchTerm(stock.name);
+    setSelectedStock(stock);
     setSuggestions([]);
     setShowSuggestions(false);
-    runSearch(name);
+    runSearch(stock.name, stock);
   };
 
   // 사용자가 관심종목을 설정해뒀으면 그 종목들의 뉴스를 우선 노출.
@@ -152,10 +200,43 @@ function Home() {
     return () => { cancelled = true; };
   }, []);
 
-  const runSearch = async (term) => {
+  useEffect(() => {
+    let cancelled = false;
+    fetchKospiHistory()
+      .then((history) => {
+        if (!cancelled) setKospiHistory(history);
+      })
+      .catch(() => {
+        if (!cancelled) setKospiHistory([]);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const resolveStock = async (query, preferred = null) => {
+    if (preferred?.ticker) return preferred;
+    try {
+      const results = await searchStocks(query);
+      return results.find((s) => s.name === query || s.ticker === query) || results[0] || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const loadStockHistory = (stock) => {
+    if (!stock?.ticker || priceHistory[stock.ticker]) return;
+    fetchStockHistory(stock.ticker)
+      .then((history) => setPriceHistory((prev) => ({ ...prev, [stock.ticker]: history })))
+      .catch(() => setPriceHistory((prev) => ({ ...prev, [stock.ticker]: [] })));
+  };
+
+  const runSearch = async (term, stock = null) => {
     const query = term.trim();
     if (!query) return alert('검색어를 입력해주세요!');
     setSearchTerm(query);
+    const resolvedStock = await resolveStock(query, stock);
+    setSelectedStock(resolvedStock);
+    setSpotlightStock(resolvedStock);
+    loadStockHistory(resolvedStock);
     setIsLoading(true);
     setNewsList([]);
     setAnalysisResults({});
@@ -194,10 +275,11 @@ function Home() {
       const result = await analyzeNews({
         title,
         content,
-        ticker: searchTerm,
+        ticker: selectedStock?.ticker || searchTerm,
         news_link: item.link,
       });
       setAnalysisResults((prev) => ({ ...prev, [index]: result }));
+      loadStockHistory(selectedStock);
     } catch (error) {
       console.error('분석 실패:', error);
       alert(error.response?.data?.detail || '분석 요청에 실패했습니다.');
@@ -234,108 +316,132 @@ function Home() {
     );
   };
 
-  const analyzedValues = Object.values(analysisResults);
-  const analyzedCount = analyzedValues.length;
-  const maxScore = analyzedCount > 0 ? Math.max(...analyzedValues.map((r) => r.score ?? r.risk_score ?? 0)) : 0;
-  const highRiskCount = analyzedValues.filter((r) => r.risk_level?.toLowerCase() === 'high').length;
-
   return (
     <div className="page-shell py-8 lg:py-10">
-      <section className="mx-auto max-w-4xl text-center">
-        <div className="pt-3">
-          <div className="mx-auto flex items-baseline justify-center gap-2">
-            <span className="text-5xl font-black leading-none text-[#03c75a] sm:text-6xl">RED</span>
-            <span className="text-5xl font-black leading-none text-slate-900 sm:text-6xl">FLAG</span>
+      <section className="market-hero">
+        <div className="market-hero-main">
+          <div className="brand-hero">
+            <p className="brand-kicker">Stock Risk Intelligence</p>
+            <div className="brand-title" aria-label="RED FLAG">
+              <span className="brand-title-red">RED</span>
+              <span className="brand-title-flag">FLAG</span>
+            </div>
+            <p className="brand-subtitle">
+              기업 뉴스 흐름을 읽고 리스크 신호를 빠르게 확인하세요.
+            </p>
           </div>
-          <p className="mt-3 text-sm font-bold text-slate-500">
-            뉴스 검색부터 위험 분석까지 한 번에 확인하세요.
-          </p>
-        </div>
 
-        <div ref={searchRef} className="relative mx-auto mt-8 max-w-3xl">
-          <div className="flex items-center rounded-full border-2 border-[#03c75a] bg-white px-5 py-2 shadow-[0_6px_18px_rgba(3,199,90,0.12)]">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => handleSearchInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { setShowSuggestions(false); handleSearch(); } }}
-              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-              placeholder="기업명 또는 종목명 검색 (예: 삼성전자)"
-              className="min-w-0 flex-1 border-0 bg-transparent px-2 py-4 text-lg font-semibold text-slate-900 outline-none placeholder:text-slate-400"
-            />
-            <button
-              onClick={() => { setShowSuggestions(false); handleSearch(); }}
-              disabled={isLoading}
-              className="h-11 rounded-full bg-[#03c75a] px-7 text-sm font-black text-white transition hover:bg-[#02b350] disabled:opacity-50"
-            >
-              {isLoading ? '검색 중' : '검색'}
-            </button>
-          </div>
-          {showSuggestions && suggestions.length > 0 && (
-            <ul className="absolute left-0 right-0 z-50 mt-2 rounded-2xl border border-slate-100 bg-white shadow-xl overflow-hidden">
-              {suggestions.map((s) => (
-                <li
-                  key={s.ticker}
-                  onMouseDown={() => selectSuggestion(s.name)}
-                  className="flex cursor-pointer items-center justify-between px-6 py-3 text-sm hover:bg-slate-50"
+          <div className="hero-control-panel">
+            <div ref={searchRef} className="hero-search relative">
+              <div className="hero-search-box">
+                <span className="hero-search-icon">⌕</span>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => handleSearchInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { setShowSuggestions(false); handleSearch(); } }}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  placeholder="기업명 또는 종목명 검색 (예: 삼성전자)"
+                  className="hero-search-input"
+                />
+                <button
+                  onClick={() => { setShowSuggestions(false); handleSearch(); }}
+                  disabled={isLoading}
+                  className="hero-search-button"
                 >
-                  <span className="font-semibold text-slate-800">{s.name}</span>
-                  <span className="text-xs text-slate-400">{s.ticker} · {s.market}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                  {isLoading ? '검색 중' : '분석 검색'}
+                </button>
+              </div>
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
+                  {suggestions.map((s) => (
+                    <li
+                      key={s.ticker}
+                      onMouseDown={() => selectSuggestion(s)}
+                      className="flex cursor-pointer items-center justify-between px-6 py-3 text-sm hover:bg-slate-50"
+                    >
+                      <span className="font-semibold text-slate-800">{s.name}</span>
+                      <span className="text-xs text-slate-400">{s.ticker} · {s.market}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
-        <div className="mx-auto mt-4 max-w-3xl text-xs font-bold uppercase tracking-widest text-slate-400">
-          핫 종목 · 네이버 뉴스 기사 많은 순
-        </div>
-        <div className="mx-auto mt-2 grid max-w-3xl grid-cols-4 gap-3 text-center text-sm font-bold sm:grid-cols-8">
-          {(trending.length > 0 ? trending : FALLBACK_TRENDING).map((stock) => (
-            <button
-              key={stock.ticker}
-              onClick={() => runSearch(stock.name)}
-              disabled={isLoading}
-              className="group flex flex-col items-center gap-2 text-slate-600 transition hover:text-[#03c75a]"
-              title={stock.article_count > 0 ? `기사 ${stock.article_count.toLocaleString()}건` : ''}
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-lime-200 bg-[#f5fff1] text-base font-black text-[#03c75a] transition group-hover:border-[#03c75a] group-hover:bg-white">
-                {stock.name.slice(0, 1)}
-              </span>
-              <span className="text-xs">{stock.name}</span>
-            </button>
-          ))}
-        </div>
-
-        {newsSource === 'watchlist' && watchlistTickerNames.length > 0 && !searchTerm && (
-          <div className="mx-auto mt-7 inline-flex max-w-3xl items-center gap-2 rounded-full border border-lime-200 bg-lime-50 px-4 py-2 text-xs font-bold text-emerald-700">
-            <span>관심종목 뉴스 표시 중</span>
-            <span className="text-emerald-500">·</span>
-            <span className="font-semibold">{watchlistTickerNames.slice(0, 5).join(', ')}</span>
+            <div className="hero-trending">
+              <div className="hero-trending-label">뉴스 주목 종목</div>
+              <div className="hero-trending-list">
+                {(trending.length > 0 ? trending : FALLBACK_TRENDING).slice(0, 6).map((stock) => (
+                  <button
+                    key={stock.ticker}
+                    onClick={() => runSearch(stock.name)}
+                    disabled={isLoading}
+                    className="hero-chip"
+                    title={stock.article_count > 0 ? `기사 ${stock.article_count.toLocaleString()}건` : ''}
+                  >
+                    <span>{stock.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        )}
 
-        <div className="mx-auto mt-5 flex max-w-3xl flex-wrap justify-center gap-3 text-sm font-bold text-slate-500">
-          <span>뉴스 {newsList.length}건</span>
-          <span className="text-slate-300">|</span>
-          {analyzedCount > 0 ? (
-            <>
-              <span className={highRiskCount > 0 ? 'text-red-500' : ''}>
-                High Risk {highRiskCount}건
-              </span>
-              <span className="text-slate-300">|</span>
-              <span className={maxScore >= 70 ? 'text-red-500' : maxScore >= 40 ? 'text-orange-400' : ''}>
-                최고 점수 {maxScore}점
-              </span>
-            </>
-          ) : (
-            <span className="text-slate-400 font-normal">뉴스를 클릭하면 AI가 위험도를 분석합니다</span>
+          {newsSource === 'watchlist' && watchlistTickerNames.length > 0 && !searchTerm && (
+            <div className="watchlist-news-pill">
+              <span>관심종목 뉴스 표시 중</span>
+              <span>·</span>
+              <strong>{watchlistTickerNames.slice(0, 5).join(', ')}</strong>
+            </div>
           )}
+
         </div>
+
+        <aside className="market-hero-panel">
+          {spotlightStock?.ticker ? (
+            <div className="market-radar stock-spotlight">
+              <div className="radar-header">
+                <div>
+                  <p>Price Monitor</p>
+                  <strong>{spotlightStock.name}</strong>
+                </div>
+                <span>{spotlightStock.ticker}</span>
+              </div>
+              <StockMiniChart data={priceHistory[spotlightStock.ticker]} />
+              <p className="radar-caption">뉴스 분석과 함께 최근 3개월 주가 흐름을 확인합니다.</p>
+            </div>
+          ) : (
+            <div className="market-radar stock-spotlight">
+              <div className="radar-header">
+                <div>
+                  <p>Market Index</p>
+                  <strong>KOSPI</strong>
+                </div>
+                <span>^KS11</span>
+              </div>
+              {kospiHistory === null ? (
+                <div className="stock-mini-empty">KOSPI 지수 로딩 중</div>
+              ) : (
+                <StockMiniChart data={kospiHistory} title="3개월 KOSPI 지수" unit="pt" />
+              )}
+              <div className="chart-empty-examples">
+                {(trending.length > 0 ? trending : FALLBACK_TRENDING).slice(0, 3).map((stock) => (
+                  <button
+                    key={stock.ticker}
+                    onClick={() => runSearch(stock.name, stock)}
+                    disabled={isLoading}
+                  >
+                    {stock.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+
       </section>
 
-      <section className="mt-10 grid gap-5 lg:grid-cols-[1fr_300px]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="mt-8 grid gap-5 lg:grid-cols-[1fr_300px]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 className="text-xl font-black text-slate-900">뉴스</h3>
@@ -381,7 +487,7 @@ function Home() {
                   className={`cursor-pointer bg-white py-5 transition ${
                     result
                       ? 'border-l-4 pl-4 ' + getRiskBorderColor(result.risk_level)
-                      : 'hover:bg-[#fbfff9]'
+                      : 'hover:bg-slate-50/70'
                   }`}
                 >
                   <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
