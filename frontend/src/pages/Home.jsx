@@ -4,7 +4,9 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { analyzeNews, searchNews, fetchLatestNews, searchStocks } from '../services/api';
-import { fetchTrendingStocks, fetchStockHistory, fetchKospiHistory } from '../services/stocks';
+import {
+  fetchTrendingStocks, fetchStockHistory, fetchKospiHistory, fetchStockQuote,
+} from '../services/stocks';
 import { getWatchlist } from '../services/watchlist';
 import AnimatedRiskGauge from '../components/AnimatedRiskGauge';
 
@@ -17,6 +19,25 @@ const FALLBACK_TRENDING = [
   { name: 'NAVER', ticker: '035420', market: 'KOSPI', article_count: 0 },
   { name: 'LG에너지솔루션', ticker: '373220', market: 'KOSPI', article_count: 0 },
 ];
+
+const TOP_DOMESTIC_STOCKS = [
+  { name: '삼성전자', ticker: '005930', market: 'KOSPI', symbol: '삼' },
+  { name: 'SK하이닉스', ticker: '000660', market: 'KOSPI', symbol: 'S' },
+  { name: '카카오', ticker: '035720', market: 'KOSPI', symbol: '카' },
+  { name: 'NAVER', ticker: '035420', market: 'KOSPI', symbol: 'N' },
+  { name: 'LG에너지솔루션', ticker: '373220', market: 'KOSPI', symbol: 'L' },
+];
+
+const formatPrice = (value) => {
+  if (value === null || value === undefined) return '—';
+  return Number(value).toLocaleString('ko-KR');
+};
+
+const formatChange = (quote) => {
+  if (!quote) return '전일 종가 대비 등락';
+  const sign = quote.change > 0 ? '+' : '';
+  return `${sign}${formatPrice(quote.change)}원 (${sign}${Number(quote.change_pct).toFixed(2)}%)`;
+};
 
 const formatDate = (pubDate) => {
   if (!pubDate) return '';
@@ -97,6 +118,7 @@ function Home() {
   const [priceHistory, setPriceHistory] = useState({});
   const [spotlightStock, setSpotlightStock] = useState(null);
   const [kospiHistory, setKospiHistory] = useState(null);
+  const [topQuotes, setTopQuotes] = useState({});
   const searchRef = useRef(null);
   const suggestTimer = useRef(null);
   const navigate = useNavigate();
@@ -212,6 +234,22 @@ function Home() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    TOP_DOMESTIC_STOCKS.forEach((stock) => {
+      fetchStockQuote(stock.ticker)
+        .then((quote) => {
+          if (cancelled) return;
+          setTopQuotes((prev) => ({ ...prev, [stock.ticker]: quote }));
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setTopQuotes((prev) => ({ ...prev, [stock.ticker]: null }));
+        });
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const resolveStock = async (query, preferred = null) => {
     if (preferred?.ticker) return preferred;
     try {
@@ -318,126 +356,168 @@ function Home() {
 
   return (
     <div className="page-shell py-8 lg:py-10">
-      <section className="market-hero">
-        <div className="market-hero-main">
-          <div className="brand-hero">
-            <p className="brand-kicker">Stock Risk Intelligence</p>
-            <div className="brand-title" aria-label="RED FLAG">
-              <span className="brand-title-red">RED</span>
-              <span className="brand-title-flag">FLAG</span>
+      <section className="home-hero-layout">
+        <aside className="top-stocks-panel" aria-label="국내 TOP 주식">
+          <div className="top-stocks-head">
+            <div>
+              <p>국내 시장</p>
+              <strong>국내 TOP 주식</strong>
+              <span>전일 종가 대비 등락</span>
             </div>
-            <p className="brand-subtitle">
-              기업 뉴스 흐름을 읽고 리스크 신호를 빠르게 확인하세요.
-            </p>
+            <em>KRW</em>
           </div>
 
-          <div className="hero-control-panel">
-            <div ref={searchRef} className="hero-search relative">
-              <div className="hero-search-box">
-                <span className="hero-search-icon">⌕</span>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => handleSearchInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { setShowSuggestions(false); handleSearch(); } }}
-                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                  placeholder="기업명 또는 종목명 검색 (예: 삼성전자)"
-                  className="hero-search-input"
-                />
+          <div className="top-stocks-list">
+            {TOP_DOMESTIC_STOCKS.map((stock) => {
+              const quote = topQuotes[stock.ticker];
+              const directionClass = quote?.direction === 'down'
+                ? 'is-down'
+                : quote?.direction === 'up'
+                  ? 'is-up'
+                  : '';
+              return (
                 <button
-                  onClick={() => { setShowSuggestions(false); handleSearch(); }}
+                  key={stock.ticker}
+                  type="button"
+                  onClick={() => runSearch(stock.name, stock)}
+                  className="top-stock-row"
                   disabled={isLoading}
-                  className="hero-search-button"
                 >
-                  {isLoading ? '검색 중' : '분석 검색'}
+                  <span className="top-stock-symbol">{stock.symbol}</span>
+                  <span className="top-stock-meta">
+                    <strong>{stock.name}</strong>
+                    <em>{stock.market} · {stock.ticker}</em>
+                  </span>
+                  <span className="top-stock-price">
+                    <strong>{quote ? `${formatPrice(quote.price)}원` : '—'}</strong>
+                    <em className={directionClass}>{formatChange(quote)}</em>
+                  </span>
                 </button>
-              </div>
-              {showSuggestions && suggestions.length > 0 && (
-                <ul className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
-                  {suggestions.map((s) => (
-                    <li
-                      key={s.ticker}
-                      onMouseDown={() => selectSuggestion(s)}
-                      className="flex cursor-pointer items-center justify-between px-6 py-3 text-sm hover:bg-slate-50"
-                    >
-                      <span className="font-semibold text-slate-800">{s.name}</span>
-                      <span className="text-xs text-slate-400">{s.ticker} · {s.market}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="hero-trending">
-              <div className="hero-trending-label">뉴스 주목 종목</div>
-              <div className="hero-trending-list">
-                {(trending.length > 0 ? trending : FALLBACK_TRENDING).slice(0, 6).map((stock) => (
-                  <button
-                    key={stock.ticker}
-                    onClick={() => runSearch(stock.name)}
-                    disabled={isLoading}
-                    className="hero-chip"
-                    title={stock.article_count > 0 ? `기사 ${stock.article_count.toLocaleString()}건` : ''}
-                  >
-                    <span>{stock.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+              );
+            })}
           </div>
-
-          {newsSource === 'watchlist' && watchlistTickerNames.length > 0 && !searchTerm && (
-            <div className="watchlist-news-pill">
-              <span>관심종목 뉴스 표시 중</span>
-              <span>·</span>
-              <strong>{watchlistTickerNames.slice(0, 5).join(', ')}</strong>
-            </div>
-          )}
-
-        </div>
-
-        <aside className="market-hero-panel">
-          {spotlightStock?.ticker ? (
-            <div className="market-radar stock-spotlight">
-              <div className="radar-header">
-                <div>
-                  <p>Price Monitor</p>
-                  <strong>{spotlightStock.name}</strong>
-                </div>
-                <span>{spotlightStock.ticker}</span>
-              </div>
-              <StockMiniChart data={priceHistory[spotlightStock.ticker]} />
-              <p className="radar-caption">뉴스 분석과 함께 최근 3개월 주가 흐름을 확인합니다.</p>
-            </div>
-          ) : (
-            <div className="market-radar stock-spotlight">
-              <div className="radar-header">
-                <div>
-                  <p>Market Index</p>
-                  <strong>KOSPI</strong>
-                </div>
-                <span>^KS11</span>
-              </div>
-              {kospiHistory === null ? (
-                <div className="stock-mini-empty">KOSPI 지수 로딩 중</div>
-              ) : (
-                <StockMiniChart data={kospiHistory} title="3개월 KOSPI 지수" unit="pt" />
-              )}
-              <div className="chart-empty-examples">
-                {(trending.length > 0 ? trending : FALLBACK_TRENDING).slice(0, 3).map((stock) => (
-                  <button
-                    key={stock.ticker}
-                    onClick={() => runSearch(stock.name, stock)}
-                    disabled={isLoading}
-                  >
-                    {stock.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </aside>
 
+        <section className="market-hero">
+          <div className="market-hero-main">
+            <div className="brand-hero">
+              <p className="brand-kicker">Stock Risk Intelligence</p>
+              <div className="brand-title" aria-label="RED FLAG">
+                <span className="brand-title-red">RED</span>
+                <span className="brand-title-flag">FLAG</span>
+              </div>
+              <p className="brand-subtitle">
+                기업 뉴스 흐름을 읽고 리스크 신호를 빠르게 확인하세요.
+              </p>
+            </div>
+
+            <div className="hero-control-panel">
+              <div ref={searchRef} className="hero-search relative">
+                <div className="hero-search-box">
+                  <span className="hero-search-icon">⌕</span>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => handleSearchInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { setShowSuggestions(false); handleSearch(); } }}
+                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                    placeholder="기업명 또는 종목명 검색 (예: 삼성전자)"
+                    className="hero-search-input"
+                  />
+                  <button
+                    onClick={() => { setShowSuggestions(false); handleSearch(); }}
+                    disabled={isLoading}
+                    className="hero-search-button"
+                  >
+                    {isLoading ? '검색 중' : '분석 검색'}
+                  </button>
+                </div>
+                {showSuggestions && suggestions.length > 0 && (
+                  <ul className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
+                    {suggestions.map((s) => (
+                      <li
+                        key={s.ticker}
+                        onMouseDown={() => selectSuggestion(s)}
+                        className="flex cursor-pointer items-center justify-between px-6 py-3 text-sm hover:bg-slate-50"
+                      >
+                        <span className="font-semibold text-slate-800">{s.name}</span>
+                        <span className="text-xs text-slate-400">{s.ticker} · {s.market}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="hero-trending">
+                <div className="hero-trending-label">뉴스 주목 종목</div>
+                <div className="hero-trending-list">
+                  {(trending.length > 0 ? trending : FALLBACK_TRENDING).slice(0, 6).map((stock) => (
+                    <button
+                      key={stock.ticker}
+                      onClick={() => runSearch(stock.name)}
+                      disabled={isLoading}
+                      className="hero-chip"
+                      title={stock.article_count > 0 ? `기사 ${stock.article_count.toLocaleString()}건` : ''}
+                    >
+                      <span>{stock.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {newsSource === 'watchlist' && watchlistTickerNames.length > 0 && !searchTerm && (
+              <div className="watchlist-news-pill">
+                <span>관심종목 뉴스 표시 중</span>
+                <span>·</span>
+                <strong>{watchlistTickerNames.slice(0, 5).join(', ')}</strong>
+              </div>
+            )}
+
+          </div>
+
+          <aside className="market-hero-panel">
+            {spotlightStock?.ticker ? (
+              <div className="market-radar stock-spotlight">
+                <div className="radar-header">
+                  <div>
+                    <p>Price Monitor</p>
+                    <strong>{spotlightStock.name}</strong>
+                  </div>
+                  <span>{spotlightStock.ticker}</span>
+                </div>
+                <StockMiniChart data={priceHistory[spotlightStock.ticker]} />
+                <p className="radar-caption">뉴스 분석과 함께 최근 3개월 주가 흐름을 확인합니다.</p>
+              </div>
+            ) : (
+              <div className="market-radar stock-spotlight">
+                <div className="radar-header">
+                  <div>
+                    <p>Market Index</p>
+                    <strong>KOSPI</strong>
+                  </div>
+                  <span>^KS11</span>
+                </div>
+                {kospiHistory === null ? (
+                  <div className="stock-mini-empty">KOSPI 지수 로딩 중</div>
+                ) : (
+                  <StockMiniChart data={kospiHistory} title="3개월 KOSPI 지수" unit="pt" />
+                )}
+                <div className="chart-empty-examples">
+                  {(trending.length > 0 ? trending : FALLBACK_TRENDING).slice(0, 3).map((stock) => (
+                    <button
+                      key={stock.ticker}
+                      onClick={() => runSearch(stock.name, stock)}
+                      disabled={isLoading}
+                    >
+                      {stock.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </aside>
+        </section>
       </section>
 
       <section className="mt-8 grid gap-5 lg:grid-cols-[1fr_300px]">
