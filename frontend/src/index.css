@@ -486,8 +486,8 @@ textarea {
 }
 
 .brand-title-red {
-  background-image: linear-gradient(90deg, #55b95d 0%, #329448 48%, #166534 100%);
-  text-shadow: 0 16px 30px rgba(22, 101, 52, 0.14);
+  background-image: linear-gradient(90deg, #ff3045 0%, #d7192a 45%, #8f1322 100%);
+  text-shadow: 0 16px 30px rgba(215, 25, 42, 0.14);
 }
 
 .brand-title-flag {
