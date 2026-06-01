@@ -1,4 +1,5 @@
 # RED FLAG
+<img width="2918" height="1514" alt="image" src="https://github.com/user-attachments/assets/9752a364-2e77-4ae3-bd38-baf8deb7e972" />
 
 뉴스 기반 주식 리스크 탐지 서비스입니다. 기업/종목 뉴스를 검색하고, 감성 분석과 룰 기반 리스크 엔진으로 `Low / Medium / High` 위험도를 산출한 뒤, 분석 근거와 리포트를 보여줍니다.
 
