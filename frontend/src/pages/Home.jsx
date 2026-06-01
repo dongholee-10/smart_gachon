@@ -119,6 +119,7 @@ function Home() {
   const [spotlightStock, setSpotlightStock] = useState(null);
   const [kospiHistory, setKospiHistory] = useState(null);
   const [topQuotes, setTopQuotes] = useState({});
+  const [showTopStocks, setShowTopStocks] = useState(false);
   const searchRef = useRef(null);
   const suggestTimer = useRef(null);
   const navigate = useNavigate();
@@ -356,8 +357,22 @@ function Home() {
 
   return (
     <div className="page-shell py-8 lg:py-10">
-      <section className="home-hero-layout">
-        <aside className="top-stocks-panel" aria-label="국내 TOP 주식">
+      <section className="home-hero-stage">
+        <button
+          type="button"
+          className="top-stocks-toggle"
+          onClick={() => setShowTopStocks((open) => !open)}
+          aria-expanded={showTopStocks}
+          aria-controls="top-stocks-panel"
+        >
+          {showTopStocks ? 'TOP 주식 닫기' : '국내 TOP 주식'}
+        </button>
+
+        <aside
+          id="top-stocks-panel"
+          className={`top-stocks-panel ${showTopStocks ? 'is-open' : ''}`}
+          aria-label="국내 TOP 주식"
+        >
           <div className="top-stocks-head">
             <div>
               <p>국내 시장</p>
@@ -449,7 +464,7 @@ function Home() {
               </div>
 
               <div className="hero-trending">
-                <div className="hero-trending-label">뉴스 주목 종목</div>
+                <div className="hero-trending-label">Trending by news volume</div>
                 <div className="hero-trending-list">
                   {(trending.length > 0 ? trending : FALLBACK_TRENDING).slice(0, 6).map((stock) => (
                     <button
